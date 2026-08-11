@@ -1,0 +1,19 @@
+<svg width="390" height="844" viewBox="0 0 390 844" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8FA9BA;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#A8B8CA;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#C5BBDA;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="390" height="844" fill="url(#bg)"/>
+  <rect x="20" y="80" width="350" height="120" fill="rgba(255,255,255,0.4)" rx="20"/>
+  <text x="195" y="130" font-family="cursive" font-size="24" fill="#333" text-anchor="middle" font-weight="bold">Weekly Tracker</text>
+  <rect x="30" y="220" width="80" height="60" fill="rgba(255,255,255,0.5)" rx="10"/>
+  <rect x="120" y="220" width="80" height="60" fill="rgba(255,255,255,0.5)" rx="10"/>
+  <rect x="210" y="220" width="80" height="60" fill="rgba(255,255,255,0.5)" rx="10"/>
+  <rect x="300" y="220" width="60" height="60" fill="rgba(255,255,255,0.5)" rx="10"/>
+  <rect x="30" y="310" width="330" height="80" fill="#FFE082" rx="10"/>
+  <rect x="30" y="410" width="330" height="120" fill="#E1BEE7" rx="10"/>
+  <rect x="30" y="550" width="330" height="80" fill="#A5D6A7" rx="10"/>
+</svg>
