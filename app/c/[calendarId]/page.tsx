@@ -22,6 +22,7 @@ import { PrivacyLockScreen } from '@/components/PrivacyLockScreen'
 import { PrivacySettingsModal } from '@/components/PrivacySettingsModal'
 import ToastContainer from '@/components/ToastContainer'
 import NotificationDrawer from '@/components/NotificationDrawer'
+import { recordRecentCalendar } from '@/lib/recent-calendars'
 
 export default function CalendarPage({ params }: { params: Promise<{ calendarId: string }> }) {
   const { calendarId } = use(params)
@@ -113,10 +114,13 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       if (typeof window !== 'undefined') {
         setIsDark(localStorage.getItem('theme') === 'dark')
         setIsMounted(true)
+        if (calendarId) {
+          recordRecentCalendar(calendarId, 'My Planner', isPrivate)
+        }
       }
     }, 0)
     return () => clearTimeout(timer)
-  }, [])
+  }, [calendarId, isPrivate])
 
   useEffect(() => {
     if (isMounted && typeof window !== 'undefined') {
@@ -191,8 +195,9 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
   }
 
   const handleSaveModal = () => {
-    saveTask(modalData)
+    if (!showModal) return
     setShowModal(false)
+    saveTask(modalData)
     setModalData({ id: '', name: '', days: [], startTime: '', duration: 1, color: COLORS[0], reminderOffset: undefined })
   }
 

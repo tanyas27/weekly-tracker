@@ -25,6 +25,15 @@ export function TaskModal({
   onDelete,
   setModalData
 }: TaskModalProps) {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.repeat) return
+      onSave()
+    }
+  }
+
   if (!showModal) return null
 
   return (
@@ -37,6 +46,7 @@ export function TaskModal({
           isDark ? 'bg-gray-800/75 border-white/10' : 'bg-white/50 border-white/40'
         }`}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={handleKeyDown}
       >
         <h2
           className={`text-xl sm:text-2xl font-bold tracking-tight mb-4 pb-3 border-b ${
@@ -60,7 +70,7 @@ export function TaskModal({
                   ? 'border-white/10 bg-gray-900/40 text-white placeholder:text-gray-500 focus:ring-[#8BB783]'
                   : 'border-white/40 bg-white/50 text-gray-900 placeholder:text-gray-500 focus:ring-[#57907C]'
               }`}
-              placeholder="Enter task name"
+              placeholder="Enter task name (Press Cmd/Ctrl+Enter to save)"
               autoFocus
             />
           </div>

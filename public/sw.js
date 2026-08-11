@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weekly-tracker-v6';
+const CACHE_NAME = 'dailyforest-v1';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -100,7 +100,7 @@ self.addEventListener('push', (event) => {
   if (!event.data) return;
   try {
     const data = event.data.json();
-    const title = data.title || 'Weekly Tracker';
+    const title = data.title || 'DailyForest';
     const options = {
       body: data.message || 'You have a scheduled reminder!',
       icon: '/icon-192.png',

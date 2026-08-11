@@ -1,11 +1,11 @@
 {
-  "name": "Weekly Tracker",
-  "short_name": "Weekly",
-  "description": "Beautiful weekly task tracker with Ghibli theme",
+  "name": "DailyForest — Daily & Weekly Planner",
+  "short_name": "DailyForest",
+  "description": "Plan your day and week beautifully. A free, open-source planner with shareable calendars, time-blocking, and offline support.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#E8E6DC",
-  "theme_color": "#8FA9BA",
+  "theme_color": "#2D5F3E",
   "orientation": "portrait-primary",
   "icons": [
     {
@@ -33,14 +33,14 @@
       "sizes": "390x844",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Weekly Tracker - Mobile View"
+      "label": "DailyForest - Mobile View"
     },
     {
       "src": "/screenshot-desktop.png",
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Weekly Tracker - Desktop View"
+      "label": "DailyForest - Desktop View"
     }
   ]
 }

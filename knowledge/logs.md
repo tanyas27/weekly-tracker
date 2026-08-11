@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-08-11 - DailyForest SEO Overhaul & Rebrand
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.6 Flash)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Transformed application into DailyForest with full SEO optimization. Created server-rendered landing page at `app/page.tsx` with Ghibli visual identity, semantic HTML landmarks (`main`, `section`, `nav`, `footer`), feature cards, screenshot showcase, and `JsonLd` schema. Added `app/c/new/page.tsx` for calendar ID generation. Created Schema.org structured data (`components/JsonLd.tsx`), `app/robots.ts`, `app/sitemap.ts`, `public/llms.txt` for AI model discoverability, and dynamic OG/Twitter social images (`app/opengraph-image.tsx`, `app/twitter-image.tsx`, `app/c/[calendarId]/opengraph-image.tsx`). Added `noindex, nofollow` metadata to private calendar layout `app/c/[calendarId]/layout.tsx`. Rebranded PWA manifest (`public/manifest.json`) and Service Worker cache (`public/sw.js`). Updated `knowledge/01-architecture-overview.md` and `knowledge/04-pwa-and-offline.md`.
+
 ### 2026-08-11 - PNG-Only App Icons & Favicon
 - **Actor:** GitHub Copilot (Claude Sonnet 4.5)
 - **Verifier:** unverified

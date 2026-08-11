@@ -18,12 +18,12 @@ sources:
 generated:
   agent: Antigravity AI
   model: Gemini 3.6 Flash
-  timestamp: 2026-08-11T12:35:00+05:30
+  timestamp: 2026-08-11T21:58:00+05:30
 verified:
   by: daman
-  date: 2026-08-10
+  date: 2026-08-11
   status: verified
-stale_after: 2027-02-10
+stale_after: 2027-02-11
 status: active
 ---
 
@@ -31,7 +31,7 @@ status: active
 
 ## 1. Overview
 
-**Weekly Tracker** is configured as a standalone **Progressive Web App (PWA)** capable of being installed on iOS, Android, and Desktop operating systems. It provides offline capabilities via a dedicated Service Worker caching shell assets.
+**DailyForest** (formerly Weekly Tracker) is configured as a standalone **Progressive Web App (PWA)** capable of being installed on iOS, Android, and Desktop operating systems. It provides offline capabilities via a dedicated Service Worker caching shell assets and network-first navigation fallback.
 
 ---
 
@@ -41,13 +41,13 @@ The Web App Manifest located at [public/manifest.json](../public/manifest.json) 
 
 ```json
 {
-  "name": "Weekly Tracker",
-  "short_name": "Weekly",
-  "description": "Beautiful weekly task tracker with Ghibli theme",
+  "name": "DailyForest — Daily & Weekly Planner",
+  "short_name": "DailyForest",
+  "description": "Plan your day and week beautifully. A free, open-source planner with shareable calendars, time-blocking, and offline support.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#E8E6DC",
-  "theme_color": "#8FA9BA",
+  "theme_color": "#2D5F3E",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -55,8 +55,8 @@ The Web App Manifest located at [public/manifest.json](../public/manifest.json) 
     { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "screenshots": [
-    { "src": "/screenshot-mobile.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow", "label": "Weekly Tracker - Mobile View" },
-    { "src": "/screenshot-desktop.png", "sizes": "1920x1080", "type": "image/png", "form_factor": "wide", "label": "Weekly Tracker - Desktop View" }
+    { "src": "/screenshot-mobile.png", "sizes": "390x844", "type": "image/png", "form_factor": "narrow", "label": "DailyForest - Mobile View" },
+    { "src": "/screenshot-desktop.png", "sizes": "1920x1080", "type": "image/png", "form_factor": "wide", "label": "DailyForest - Desktop View" }
   ]
 }
 ```

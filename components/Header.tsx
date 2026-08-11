@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { nanoid } from 'nanoid'
+import { Home } from 'lucide-react'
 
 export interface SessionInfo {
   id: string;
@@ -91,6 +93,18 @@ export function Header({
         <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
           {/* Title & Mobile-Only Top Right Controls (Bell + Theme) */}
           <div className="flex items-center justify-between sm:justify-start gap-2.5">
+            <Link
+              href="/"
+              aria-label="Return to Homepage"
+              title="Return to Homepage"
+              className={`p-2 rounded-full border shadow-2xs transition-all hover:scale-105 active:scale-95 flex items-center justify-center shrink-0 ${
+                isDark
+                  ? 'bg-slate-800/80 border-slate-700/80 text-slate-300 hover:text-white hover:bg-slate-700'
+                  : 'bg-white/90 border-slate-200/90 text-slate-700 hover:text-slate-900 hover:bg-white'
+              }`}
+            >
+              <Home className="w-4.5 h-4.5" />
+            </Link>
             <h1 className={`text-2xl sm:text-3xl font-black tracking-tight font-sans whitespace-nowrap ${isDark ? 'text-white' : 'text-slate-900'}`}>
               {monthYear}
             </h1>
