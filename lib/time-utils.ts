@@ -69,14 +69,28 @@ export function getCurrentTimePosition(currentHour: number): number | null {
 }
 
 /**
- * Returns 7 DayInfo objects starting from Monday of the current week.
+ * Returns 7 DayInfo objects starting from Monday of the current week (or specified week start date).
  */
-export function getWeekDays(): DayInfo[] {
+export function getWeekDays(startWeekDate?: string): DayInfo[] {
   const today = new Date()
-  const currentDay = today.getDay()
-  const diff = currentDay === 0 ? -6 : 1 - currentDay
-  const monday = new Date(today)
-  monday.setDate(today.getDate() + diff)
+  let monday: Date
+
+  if (startWeekDate) {
+    const parts = startWeekDate.split('-').map(Number)
+    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      monday = new Date(parts[0], parts[1] - 1, parts[2])
+    } else {
+      const currentDay = today.getDay()
+      const diff = currentDay === 0 ? -6 : 1 - currentDay
+      monday = new Date(today)
+      monday.setDate(today.getDate() + diff)
+    }
+  } else {
+    const currentDay = today.getDay()
+    const diff = currentDay === 0 ? -6 : 1 - currentDay
+    monday = new Date(today)
+    monday.setDate(today.getDate() + diff)
+  }
 
   const days: DayInfo[] = []
   const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -98,7 +112,14 @@ export function getWeekDays(): DayInfo[] {
   return days
 }
 
-export function getCurrentMonthYear(): string {
+export function getCurrentMonthYear(startWeekDate?: string): string {
+  if (startWeekDate) {
+    const parts = startWeekDate.split('-').map(Number)
+    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      const date = new Date(parts[0], parts[1] - 1, parts[2])
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    }
+  }
   const now = new Date()
   return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }
