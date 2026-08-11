@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCalendar,
-  createCalendar,
   getOrCreateSession,
   getCalendarSessions,
   getTasksForSession,
@@ -35,16 +34,12 @@ export async function GET(
 
     const weekStartDate = searchParams.get('week') || defaultMondayStr;
 
-    let calendar = await getCalendar(calendarId);
-
-    // If database is available and calendar doesn't exist, create it explicitly
-    if (!calendar) {
-      calendar = await createCalendar(calendarId);
-    }
+    const calendar = await getCalendar(calendarId);
 
     if (!calendar) {
       return NextResponse.json(
         {
+          calendar: { id: calendarId, title: 'August 2026', isPrivate: false },
           isPrivate: false,
           isLocked: false,
           sessions: [],

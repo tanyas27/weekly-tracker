@@ -89,7 +89,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     updateSettings,
     requestNativePermission,
     notifyTaskCompleted,
-  } = useNotifications(tasks)
+  } = useNotifications(tasks, calendarId)
 
   const [mobileSelectedDay, setMobileSelectedDay] = useState<string>(() => {
     return days.find((day) => day.isToday)?.short ?? days[0]?.short ?? 'MON'

@@ -40,10 +40,11 @@ function stripEmojis(str: string): string {
   return str.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{FE00}-\u{FE0F}]|[\u{1F900}-\u{1F9FF}]/gu, '').trim();
 }
 
-export function getStoredNotifications(): AppNotification[] {
+export function getStoredNotifications(calendarId?: string): AppNotification[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(NOTIFICATIONS_KEY);
+    const key = calendarId ? `${NOTIFICATIONS_KEY}_${calendarId}` : NOTIFICATIONS_KEY;
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     const parsed: AppNotification[] = JSON.parse(raw);
     return parsed.map((n) => ({
@@ -57,21 +58,22 @@ export function getStoredNotifications(): AppNotification[] {
   }
 }
 
-export function saveStoredNotifications(notifications: AppNotification[]): void {
+export function saveStoredNotifications(notifications: AppNotification[], calendarId?: string): void {
   if (typeof window === 'undefined') return;
   try {
-    // Keep only the most recent notifications to prevent unbounded localstorage growth
+    const key = calendarId ? `${NOTIFICATIONS_KEY}_${calendarId}` : NOTIFICATIONS_KEY;
     const sliced = notifications.slice(0, MAX_STORED_NOTIFICATIONS);
-    localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(sliced));
+    localStorage.setItem(key, JSON.stringify(sliced));
   } catch (err) {
     console.error('Failed to save stored notifications', err);
   }
 }
 
-export function getStoredSentReminderKeys(): string[] {
+export function getStoredSentReminderKeys(calendarId?: string): string[] {
   if (typeof window === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(SENT_REMINDERS_KEY);
+    const key = calendarId ? `${SENT_REMINDERS_KEY}_${calendarId}` : SENT_REMINDERS_KEY;
+    const raw = localStorage.getItem(key);
     if (!raw) return [];
     return JSON.parse(raw);
   } catch {
@@ -79,11 +81,11 @@ export function getStoredSentReminderKeys(): string[] {
   }
 }
 
-export function saveStoredSentReminderKeys(keys: string[]): void {
+export function saveStoredSentReminderKeys(keys: string[], calendarId?: string): void {
   if (typeof window === 'undefined') return;
   try {
-    // Keep only the most recent keys to prevent unbounded localstorage growth
-    localStorage.setItem(SENT_REMINDERS_KEY, JSON.stringify(keys.slice(-MAX_STORED_REMINDER_KEYS)));
+    const key = calendarId ? `${SENT_REMINDERS_KEY}_${calendarId}` : SENT_REMINDERS_KEY;
+    localStorage.setItem(key, JSON.stringify(keys.slice(-MAX_STORED_REMINDER_KEYS)));
   } catch (err) {
     console.error('Failed to save sent reminder keys', err);
   }

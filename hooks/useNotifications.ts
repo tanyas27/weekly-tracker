@@ -21,14 +21,9 @@ import { useLocalStorage } from './useLocalStorage';
 
 const DAY_MAP = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
-
-export function useNotifications(tasks: Task[]) {
+export function useNotifications(tasks: Task[], calendarId?: string) {
   const [settings, setSettings] = useLocalStorage(DEFAULT_SETTINGS, getStoredSettings, saveStoredSettings);
-  const [notifications, setNotifications] = useLocalStorage<AppNotification[]>(
-    [],
-    getStoredNotifications,
-    saveStoredNotifications
-  );
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activeToasts, setActiveToasts] = useState<AppNotification[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>('default');
@@ -37,27 +32,38 @@ export function useNotifications(tasks: Task[]) {
   const sentRemindersRef = useRef<Set<string>>(new Set());
   const dailySummarySentRef = useRef<string | null>(null);
 
-  // Load ref-backed state and detect notification permission after mount
+  // Load ref-backed state and detect notification permission after mount & calendarId change
   useEffect(() => {
-    sentRemindersRef.current = new Set(getStoredSentReminderKeys());
+    queueMicrotask(() => {
+      setNotifications(getStoredNotifications(calendarId));
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setPermissionStatus(Notification.permission);
+      } else if (typeof window !== 'undefined') {
+        setPermissionStatus('unsupported');
+      }
+    });
+    sentRemindersRef.current = new Set(getStoredSentReminderKeys(calendarId));
     dailySummarySentRef.current = getStoredDailySummaryDate();
-    // Deliberate post-mount sync from the browser Notification API (unavailable during SSR).
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setPermissionStatus(Notification.permission);
-    } else if (typeof window !== 'undefined') {
-      setPermissionStatus('unsupported');
-    }
-  }, []);
+  }, [calendarId]);
 
-
+  // Persist notification changes helper
+  const updateNotifications = useCallback(
+    (updater: (prev: AppNotification[]) => AppNotification[]) => {
+      setNotifications((prev) => {
+        const next = updater(prev);
+        saveStoredNotifications(next, calendarId);
+        return next;
+      });
+    },
+    [calendarId]
+  );
 
   // Persist settings changes
   const updateSettings = useCallback((newSettings: Partial<NotificationSettings>) => {
     setSettings((prev) => ({ ...prev, ...newSettings }));
   }, [setSettings]);
 
-  // Persist notification changes
+  // Add notification
   const addNotification = useCallback(
     (notification: Omit<AppNotification, 'id' | 'timestamp' | 'read'>) => {
       const cleanTitle = notification.title.replace(/[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F600}-\u{1F64F}]|[\u{1F680}-\u{1F6FF}]|[\u{FE00}-\u{FE0F}]|[\u{1F900}-\u{1F9FF}]/gu, '').trim();
@@ -72,7 +78,7 @@ export function useNotifications(tasks: Task[]) {
         read: false,
       };
 
-      setNotifications((prev) => [newNotif, ...prev]);
+      updateNotifications((prev) => [newNotif, ...prev]);
 
       // Add to active toast queue
       setActiveToasts((prev) => [newNotif, ...prev]);
@@ -104,7 +110,7 @@ export function useNotifications(tasks: Task[]) {
         }
       }
     },
-    [settings.soundEnabled, settings.nativeNotificationsEnabled, setNotifications]
+    [settings.soundEnabled, settings.nativeNotificationsEnabled, updateNotifications]
   );
 
   const dismissToast = useCallback((id: string) => {
@@ -112,16 +118,16 @@ export function useNotifications(tasks: Task[]) {
   }, []);
 
   const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, [setNotifications]);
+    updateNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  }, [updateNotifications]);
 
   const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, [setNotifications]);
+    updateNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, [updateNotifications]);
 
   const clearAllNotifications = useCallback(() => {
-    setNotifications([]);
-  }, [setNotifications]);
+    updateNotifications(() => []);
+  }, [updateNotifications]);
 
   const requestNativePermission = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
@@ -179,7 +185,7 @@ export function useNotifications(tasks: Task[]) {
       const dueReminders = getDueReminders(tasks, currentDayShort, now, settings.defaultLeadTime, sentRemindersRef.current);
       for (const { task, reminderKey, leadTime } of dueReminders) {
         sentRemindersRef.current.add(reminderKey);
-        saveStoredSentReminderKeys(Array.from(sentRemindersRef.current));
+        saveStoredSentReminderKeys(Array.from(sentRemindersRef.current), calendarId);
 
         addNotification({
           title: `Reminder: ${task.name}`,
@@ -194,7 +200,7 @@ export function useNotifications(tasks: Task[]) {
     checkReminders();
     const interval = setInterval(checkReminders, REMINDER_POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [tasks, settings, addNotification]);
+  }, [tasks, settings, addNotification, calendarId]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 

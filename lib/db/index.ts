@@ -92,6 +92,7 @@ export async function getOrCreateSession(calendarId: string, weekStartDate: stri
   const sql = getSql();
   if (!sql) return null;
   try {
+    await createCalendar(calendarId);
     const rows = await sql`
       INSERT INTO sessions (calendar_id, week_start_date)
       VALUES (${calendarId}, ${weekStartDate}::date)
