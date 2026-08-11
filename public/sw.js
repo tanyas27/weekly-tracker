@@ -1,4 +1,4 @@
-const CACHE_NAME = 'weekly-tracker-v5';
+const CACHE_NAME = 'weekly-tracker-v6';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -17,9 +17,17 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
   );
+  self.skipWaiting();
 });
 
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // NEVER cache API requests or Server-Sent Event streams
+  if (url.pathname.startsWith('/api/')) {
+    return;
+  }
+
   // Navigation requests (HTML page loads): Network First, fallback to cache
   if (event.request.mode === 'navigate') {
     event.respondWith(
@@ -57,7 +65,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -70,6 +77,7 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });
 
 self.addEventListener('notificationclick', (event) => {
@@ -103,4 +111,3 @@ self.addEventListener('push', (event) => {
     console.error('Error handling push event', err);
   }
 });
-

@@ -8,6 +8,15 @@ import {
 } from '@/lib/db';
 import { verifyPasscode } from '@/lib/crypto-utils';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+  Pragma: 'no-cache',
+  Expires: '0',
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ calendarId: string }> }
@@ -34,28 +43,34 @@ export async function GET(
     }
 
     if (!calendar) {
-      return NextResponse.json({
-        isPrivate: false,
-        isLocked: false,
-        sessions: [],
-        activeSession: null,
-        tasks: [],
-      });
+      return NextResponse.json(
+        {
+          isPrivate: false,
+          isLocked: false,
+          sessions: [],
+          activeSession: null,
+          tasks: [],
+        },
+        { headers: NO_CACHE_HEADERS }
+      );
     }
 
     // Zero-Payload Defense for Private Calendars
     if (calendar.is_private && calendar.passcode_hash) {
-      const passcode = request.headers.get('x-calendar-passcode');
+      const passcode = request.headers.get('x-calendar-passcode') || searchParams.get('passcode');
       const isValid = passcode ? verifyPasscode(passcode, calendar.passcode_hash) : false;
       if (!isValid) {
-        return NextResponse.json({
-          calendar: { id: calendar.id, title: calendar.title },
-          isPrivate: true,
-          isLocked: true,
-          sessions: [],
-          activeSession: null,
-          tasks: [],
-        });
+        return NextResponse.json(
+          {
+            calendar: { id: calendar.id, title: calendar.title },
+            isPrivate: true,
+            isLocked: true,
+            sessions: [],
+            activeSession: null,
+            tasks: [],
+          },
+          { headers: NO_CACHE_HEADERS }
+        );
       }
     }
 
@@ -76,20 +91,23 @@ export async function GET(
       color: t.color,
     }));
 
-    return NextResponse.json({
-      calendar: {
-        id: calendar.id,
-        title: calendar.title,
+    return NextResponse.json(
+      {
+        calendar: {
+          id: calendar.id,
+          title: calendar.title,
+          isPrivate: calendar.is_private,
+        },
         isPrivate: calendar.is_private,
+        isLocked: false,
+        sessions,
+        activeSession,
+        tasks,
       },
-      isPrivate: calendar.is_private,
-      isLocked: false,
-      sessions,
-      activeSession,
-      tasks,
-    });
+      { headers: NO_CACHE_HEADERS }
+    );
   } catch (error) {
     console.error('API /api/calendars/[calendarId] error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }

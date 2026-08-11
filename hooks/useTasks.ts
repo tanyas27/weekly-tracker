@@ -68,6 +68,18 @@ export function useTasks(
     passcodeRef.current = passcodeHash
   }, [passcodeHash])
 
+  const getPasscode = useCallback(
+    (customPasscode?: string) => {
+      if (customPasscode) return customPasscode
+      if (passcodeRef.current) return passcodeRef.current
+      if (typeof window !== 'undefined' && calendarId) {
+        return localStorage.getItem(`calendar_passcode_${calendarId}`) || ''
+      }
+      return ''
+    },
+    [calendarId]
+  )
+
   const fetchCalendarData = useCallback(
     async (showSyncing = true, customPasscode?: string) => {
       if (!calendarId) {
@@ -80,13 +92,17 @@ export function useTasks(
 
       try {
         const headers: Record<string, string> = {}
-        const pass = customPasscode ?? passcodeRef.current
+        const pass = getPasscode(customPasscode)
         if (pass) {
           headers['x-calendar-passcode'] = pass
         }
 
-        const weekParam = selectedWeek ? `?week=${encodeURIComponent(selectedWeek)}` : ''
-        const res = await fetch(`/api/calendars/${calendarId}${weekParam}`, { headers })
+        const params = new URLSearchParams()
+        if (selectedWeek) params.set('week', selectedWeek)
+        if (pass) params.set('passcode', pass)
+        const queryStr = params.toString() ? `?${params.toString()}` : ''
+
+        const res = await fetch(`/api/calendars/${calendarId}${queryStr}`, { headers, cache: 'no-store' })
 
         if (!res.ok) {
           if (res.status === 401) {
@@ -122,7 +138,7 @@ export function useTasks(
         setIsLoaded(true)
       }
     },
-    [calendarId, selectedWeek]
+    [calendarId, selectedWeek, getPasscode]
   )
 
   useEffect(() => {
@@ -248,11 +264,13 @@ export function useTasks(
         setSyncStatus('syncing')
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-          if (passcodeRef.current) {
-            headers['x-calendar-passcode'] = passcodeRef.current
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
           }
 
-          const res = await fetch(`/api/calendars/${calendarId}/tasks`, {
+          const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify({
@@ -260,6 +278,7 @@ export function useTasks(
               weekStartDate: selectedWeek,
               task: updatedTask,
             }),
+            cache: 'no-store',
           })
 
           if (res.ok) {
@@ -277,7 +296,7 @@ export function useTasks(
         })
       }
     },
-    [calendarId, selectedWeek, tasks]
+    [calendarId, selectedWeek, tasks, getPasscode]
   )
 
   const deleteTask = useCallback(
@@ -290,17 +309,20 @@ export function useTasks(
         setSyncStatus('syncing')
         try {
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-          if (passcodeRef.current) {
-            headers['x-calendar-passcode'] = passcodeRef.current
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
           }
 
-          const res = await fetch(`/api/calendars/${calendarId}/tasks`, {
+          const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
             method: 'POST',
             headers,
             body: JSON.stringify({
               action: 'delete',
               taskId,
             }),
+            cache: 'no-store',
           })
 
           if (res.ok) {
@@ -318,7 +340,7 @@ export function useTasks(
         })
       }
     },
-    [calendarId]
+    [calendarId, getPasscode]
   )
 
   const toggleComplete = useCallback(
@@ -339,10 +361,12 @@ export function useTasks(
 
           if (calendarId) {
             const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-            if (passcodeRef.current) {
-              headers['x-calendar-passcode'] = passcodeRef.current
+            const pass = getPasscode()
+            if (pass) {
+              headers['x-calendar-passcode'] = pass
             }
-            fetch(`/api/calendars/${calendarId}/tasks`, {
+            const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+            fetch(url, {
               method: 'POST',
               headers,
               body: JSON.stringify({
@@ -350,6 +374,7 @@ export function useTasks(
                 weekStartDate: selectedWeek,
                 task: updated,
               }),
+              cache: 'no-store',
             }).catch(() => {})
           }
 
@@ -363,7 +388,7 @@ export function useTasks(
         return nextTasks
       })
     },
-    [calendarId, selectedWeek]
+    [calendarId, selectedWeek, getPasscode]
   )
 
   const copyPreviousWeekTasks = useCallback(async () => {
@@ -371,17 +396,20 @@ export function useTasks(
     setSyncStatus('syncing')
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (passcodeRef.current) {
-        headers['x-calendar-passcode'] = passcodeRef.current
+      const pass = getPasscode()
+      if (pass) {
+        headers['x-calendar-passcode'] = pass
       }
 
-      const res = await fetch(`/api/calendars/${calendarId}/tasks`, {
+      const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+      const res = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           action: 'copy_previous',
           weekStartDate: selectedWeek,
         }),
+        cache: 'no-store',
       })
 
       if (res.ok) {
@@ -392,7 +420,7 @@ export function useTasks(
     } catch {
       setSyncStatus('offline')
     }
-  }, [calendarId, fetchCalendarData, selectedWeek])
+  }, [calendarId, fetchCalendarData, selectedWeek, getPasscode])
 
   const totalTasks = useMemo(
     () => tasks.reduce((acc, t) => acc + (t.days.length || 1), 0),

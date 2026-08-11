@@ -28,6 +28,7 @@ export function useCalendarPrivacy(calendarId: string) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'verify', passcode }),
+          cache: 'no-store',
         });
 
         const data = await res.json();
@@ -70,6 +71,7 @@ export function useCalendarPrivacy(calendarId: string) {
             newPasscode: newPin,
             currentPasscode: currPin || passcodeHash,
           }),
+          cache: 'no-store',
         });
 
         const data = await res.json();
