@@ -426,7 +426,10 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
                 if (!task) return
                 const newHour = 7 + slotIndex
                 const newStartTime = `${newHour.toString().padStart(2, '0')}:00`
-                const newDays = task.days.length === 1 ? [toDay] : task.days
+                const updatedDays = task.days.includes(fromDay)
+                  ? task.days.map((d) => (d === fromDay ? toDay : d))
+                  : [...task.days, toDay]
+                const newDays = Array.from(new Set(updatedDays))
                 saveTask({ id: taskId, name: task.name, days: newDays, startTime: newStartTime, duration: task.duration, color: task.color, reminderOffset: task.reminderOffset })
               }}
             />

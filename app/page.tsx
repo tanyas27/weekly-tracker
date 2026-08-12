@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import JsonLd from '@/components/JsonLd'
+import { parseCalendarId } from '@/lib/calendar-id-parser'
 import {
   ArrowRight,
   Clock,
@@ -26,9 +28,12 @@ import {
 } from '@/lib/recent-calendars'
 
 export default function LandingPage() {
+  const router = useRouter()
+  const inputRef = useRef<HTMLInputElement>(null)
   const [isDark, setIsDark] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [recentCalendars, setRecentCalendars] = useState<RecentCalendar[]>([])
+  const [customCalendarId, setCustomCalendarId] = useState('')
 
   useEffect(() => {
     setIsMounted(true)
@@ -39,6 +44,32 @@ export default function LandingPage() {
       setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches)
     }
     setRecentCalendars(getRecentCalendars())
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault()
+        inputRef.current?.focus()
+      } else if (e.key === 'o' || e.key === 'O') {
+        e.preventDefault()
+        inputRef.current?.focus()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   const toggleTheme = () => {
@@ -52,6 +83,12 @@ export default function LandingPage() {
   const handleClearRecent = () => {
     clearRecentCalendars()
     setRecentCalendars([])
+  }
+
+  const handleOpenCustomCalendar = (e: React.FormEvent) => {
+    e.preventDefault()
+    const cleanId = parseCalendarId(customCalendarId)
+    router.push(`/c/${cleanId}`)
   }
 
   return (
@@ -121,18 +158,46 @@ export default function LandingPage() {
               <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   href="/c/new"
-                  className={`group inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-base shadow-lg transition-all duration-200 active:scale-[0.98] ${
+                  className={`group inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full font-semibold text-base shadow-lg transition-all duration-200 active:scale-[0.98] whitespace-nowrap ${
                     isDark
                       ? 'bg-[#BDCC8D] text-zinc-950 shadow-[#BDCC8D]/20 hover:bg-[#c9d79c]'
                       : 'bg-[#2D5F3E] text-white shadow-[#2D5F3E]/20 hover:bg-[#245033]'
                   }`}
                 >
-                  Create your planner
+                  Create new planner
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-                <span className={`text-sm ${isDark ? 'text-zinc-500' : 'text-[#1a2e23]/40'}`}>
-                  No sign-up needed
-                </span>
+
+                <form
+                  onSubmit={handleOpenCustomCalendar}
+                  className={`relative flex items-center w-full sm:w-auto p-1 rounded-full border shadow-md transition-all focus-within:ring-2 ${
+                    isDark
+                      ? 'bg-zinc-900/90 border-white/15 focus-within:ring-[#BDCC8D]/50'
+                      : 'bg-white/90 border-black/10 focus-within:ring-[#2D5F3E]/50'
+                  }`}
+                >
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={customCalendarId}
+                    onChange={(e) => setCustomCalendarId(e.target.value)}
+                    placeholder="Enter ID or paste URL..."
+                    aria-label="Enter Calendar ID or URL"
+                    className={`w-full sm:w-56 px-4 py-2 text-sm bg-transparent outline-none ${
+                      isDark ? 'text-zinc-100 placeholder:text-zinc-500' : 'text-[#1a2e23] placeholder:text-zinc-400'
+                    }`}
+                  />
+                  <button
+                    type="submit"
+                    className={`px-4 py-2 rounded-full font-bold text-xs shadow-xs transition-all active:scale-95 whitespace-nowrap cursor-pointer ${
+                      isDark
+                        ? 'bg-zinc-800 text-[#BDCC8D] hover:bg-zinc-700 border border-white/10'
+                        : 'bg-emerald-50 text-[#2D5F3E] hover:bg-emerald-100 border border-emerald-200/60'
+                    }`}
+                  >
+                    Open →
+                  </button>
+                </form>
               </div>
             </div>
           </section>
