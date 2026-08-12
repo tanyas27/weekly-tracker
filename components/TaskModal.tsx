@@ -25,12 +25,31 @@ export function TaskModal({
   onDelete,
   setModalData
 }: TaskModalProps) {
+  const modalRef = React.useRef<HTMLDivElement>(null)
+  const previousFocusRef = React.useRef<HTMLElement | null>(null)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  React.useEffect(() => {
+    if (showModal) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 50)
+      return () => clearTimeout(timer)
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus()
+    }
+  }, [showModal])
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault()
       e.stopPropagation()
       if (e.repeat) return
       onSave()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose()
     }
   }
 
@@ -42,6 +61,11 @@ export function TaskModal({
       onClick={onClose}
     >
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="task-modal-title"
+        tabIndex={-1}
         className={`rounded-2xl md:rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 backdrop-blur-2xl backdrop-saturate-150 border ${
           isDark ? 'bg-gray-800/75 border-white/10' : 'bg-white/50 border-white/40'
         }`}
@@ -49,6 +73,7 @@ export function TaskModal({
         onKeyDown={handleKeyDown}
       >
         <h2
+          id="task-modal-title"
           className={`text-xl sm:text-2xl font-bold tracking-tight mb-4 pb-3 border-b ${
             isDark ? 'text-gray-100 border-white/10' : 'text-gray-900 border-white/30'
           }`}
@@ -62,6 +87,7 @@ export function TaskModal({
               Task Name
             </label>
             <input
+              ref={inputRef}
               type="text"
               value={modalData.name}
               onChange={(e) => setModalData({ ...modalData, name: e.target.value })}

@@ -447,6 +447,10 @@ export function useTasks(
     return grouped
   }, [days, tasks])
 
+  const unlockServerState = useCallback(() => {
+    setServerPrivacyState((prev) => ({ ...prev, isLocked: false }))
+  }, [])
+
   return {
     tasks,
     setTasks,
@@ -461,6 +465,7 @@ export function useTasks(
     syncStatus,
     copyPreviousWeekTasks,
     serverPrivacyState,
+    unlockServerState,
     isLoaded,
     refetch: fetchCalendarData,
   }

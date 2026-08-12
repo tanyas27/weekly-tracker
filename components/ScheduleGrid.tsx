@@ -40,14 +40,14 @@ const DayColumn = React.memo(function DayColumn({
 }: DayColumnProps) {
   return (
     <div
-      className={`flex-1 ${minWidthClassName} border-r last:border-r-0 relative ${
+      className={`flex-1 ${minWidthClassName} border-r last:border-r-0 relative transition-colors ${
         day.isToday
           ? isDark
-            ? 'bg-gray-700/30 border-gray-600'
-            : 'bg-blue-50/30 border-blue-100'
+            ? 'bg-[#BDCC8D]/[0.06] border-zinc-800'
+            : 'bg-[#2D5F3E]/[0.04] border-zinc-200'
           : isDark
-            ? 'border-gray-700'
-            : 'border-gray-100'
+            ? 'border-zinc-800'
+            : 'border-zinc-200'
       }`}
       style={{ height: TIME_SLOTS.length * SLOT_HEIGHT_PX }}
     >
@@ -59,8 +59,8 @@ const DayColumn = React.memo(function DayColumn({
             key={idx}
             className={`h-20 border-b cursor-pointer transition-colors ${
               isDark
-                ? `border-gray-700 hover:bg-gray-700/50 ${isCurrentHour ? 'bg-gray-700/50' : ''}`
-                : `border-gray-100 hover:bg-gray-50/50 ${isCurrentHour ? 'bg-blue-50/50' : ''}`
+                ? `border-zinc-800/80 hover:bg-[#BDCC8D]/10 ${isCurrentHour ? 'bg-[#BDCC8D]/15' : ''}`
+                : `border-zinc-200/80 hover:bg-[#2D5F3E]/[0.06] ${isCurrentHour ? 'bg-[#2D5F3E]/[0.08]' : ''}`
             }`}
             onClick={() => onOpenAddModal(day.short, idx)}
           />
@@ -98,18 +98,22 @@ export function ScheduleGrid({
 
   return (
     <div
-      className={`rounded-3xl shadow-lg overflow-hidden backdrop-blur-md relative z-30 ${
-        isDark ? 'bg-gray-800/70 border border-white/10' : 'bg-white/40 border border-white/40'
+      className={`rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden backdrop-blur-md relative z-30 transition-colors border ${
+        isDark
+          ? 'bg-zinc-900 border-zinc-800 shadow-black/50'
+          : 'bg-white border-zinc-200/90 shadow-[0_12px_36px_rgba(45,95,62,0.08)]'
       }`}
     >
       <div className="flex">
         {/* Timeline hours column */}
-        <div className={`w-16 sm:w-20 md:w-24 flex-shrink-0 border-r ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+        <div className={`w-16 sm:w-20 md:w-24 flex-shrink-0 border-r transition-colors ${
+          isDark ? 'border-zinc-800 bg-zinc-900/90' : 'border-zinc-200 bg-zinc-50/90'
+        }`}>
           {TIME_SLOTS.map((time) => (
             <div
               key={time}
-              className={`h-20 flex items-start justify-end pr-2 sm:pr-3 md:pr-4 pt-1 text-[10px] sm:text-xs font-medium ${
-                isDark ? 'text-gray-400' : 'text-gray-500'
+              className={`h-20 flex items-start justify-end pr-2 sm:pr-3 md:pr-4 pt-1 text-[10px] sm:text-xs font-bold tracking-tight ${
+                isDark ? 'text-zinc-400' : 'text-zinc-600'
               }`}
             >
               {time}
@@ -122,10 +126,10 @@ export function ScheduleGrid({
           {/* Real-time ticker line */}
           {currentTimeTop !== null && (
             <div
-              className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-red-500 to-pink-500 z-20 pointer-events-none shadow-lg"
+              className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-[#2D5F3E] to-[#BDCC8D] z-20 pointer-events-none shadow-md"
               style={{ top: `${currentTimeTop}px` }}
             >
-              <div className="absolute left-0 w-3 h-3 bg-gradient-to-br from-red-500 to-pink-500 rounded-full -translate-y-1/2 shadow-lg animate-pulse" />
+              <div className="absolute left-0 w-3 h-3 bg-[#2D5F3E] dark:bg-[#BDCC8D] rounded-full -translate-y-1/2 shadow-lg animate-pulse" />
             </div>
           )}
 

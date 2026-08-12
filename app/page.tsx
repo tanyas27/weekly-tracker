@@ -64,7 +64,7 @@ export default function LandingPage() {
         <nav className={`fixed top-0 inset-x-0 z-50 backdrop-blur-lg border-b transition-colors ${
           isDark ? 'bg-[#18181b]/80 border-white/10' : 'bg-[#FAF9F6]/80 border-black/[0.04]'
         }`}>
-          <div className="max-w-6xl mx-auto flex items-center justify-between h-14 px-5">
+          <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6">
             <Link href="/" className="flex items-center gap-2">
               <TreePine className={`w-5 h-5 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
               <span className={`text-lg font-handwritten font-bold ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`}>
@@ -139,8 +139,8 @@ export default function LandingPage() {
 
           {/* Recent Planners / Open Recent */}
           {isMounted && recentCalendars.length > 0 && (
-            <section className="px-5 pb-12 sm:pb-16 -mt-2 sm:-mt-4" aria-label="Recent Planners">
-              <div className="max-w-3xl mx-auto">
+            <section className="px-4 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4" aria-label="Recent Planners">
+              <div className="max-w-6xl mx-auto">
                 <div className={`p-4 sm:p-5 rounded-2xl border shadow-md backdrop-blur-md transition-colors ${
                   isDark ? 'bg-zinc-900/90 border-white/10 shadow-black/40' : 'bg-white/90 border-[#2D5F3E]/10 shadow-[0_8px_30px_rgba(45,95,62,0.06)]'
                 }`}>
@@ -198,8 +198,8 @@ export default function LandingPage() {
           )}
 
           {/* Mini Planner Preview Widget */}
-          <section className="px-5 pb-20 sm:pb-28" aria-label="Planner Preview">
-            <div className="max-w-4xl mx-auto">
+          <section className="px-4 sm:px-6 pb-20 sm:pb-28" aria-label="Planner Preview">
+            <div className="max-w-6xl mx-auto">
               <div className={`relative rounded-2xl sm:rounded-3xl border p-5 sm:p-7 shadow-xl backdrop-blur-md transition-colors ${
                 isDark
                   ? 'bg-zinc-900/90 border-white/10 shadow-black/40'
@@ -210,8 +210,8 @@ export default function LandingPage() {
                   isDark ? 'border-white/10' : 'border-black/[0.05]'
                 }`}>
                   <div className="flex items-center gap-3">
-                    <span className={`font-handwritten text-2xl sm:text-3xl font-bold ${
-                      isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
+                    <span className={`font-sans text-2xl sm:text-3xl font-black tracking-tight ${
+                      isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
                     }`}>August 2026</span>
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
                       isDark
@@ -311,10 +311,10 @@ export default function LandingPage() {
           </section>
 
           {/* Features */}
-          <section className={`border-y py-16 sm:py-20 px-5 transition-colors ${
+          <section className={`border-y py-16 sm:py-20 px-4 sm:px-6 transition-colors ${
             isDark ? 'bg-zinc-900/50 border-white/10' : 'bg-white border-black/[0.04]'
           }`} aria-label="Features">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-7xl mx-auto">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-6">
                 <Feature
                   isDark={isDark}
@@ -345,7 +345,7 @@ export default function LandingPage() {
           </section>
 
           {/* CTA */}
-          <section className="py-20 sm:py-28 px-5 text-center" aria-label="Call to Action">
+          <section className="py-20 sm:py-28 px-4 sm:px-6 text-center" aria-label="Call to Action">
             <div className="max-w-xl mx-auto">
               <Image
                 src="/totoro.png"
@@ -382,10 +382,10 @@ export default function LandingPage() {
         </main>
 
         {/* Footer */}
-        <footer className={`border-t py-8 px-5 transition-colors ${
+        <footer className={`border-t py-8 px-4 sm:px-6 transition-colors ${
           isDark ? 'border-white/10 bg-zinc-950' : 'border-black/[0.04] bg-[#FAF9F6]'
         }`}>
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
               <TreePine className={`w-4 h-4 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
               <span className={`font-handwritten text-base font-semibold ${
