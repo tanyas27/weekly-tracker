@@ -52,6 +52,8 @@ export const TaskCard = React.memo(function TaskCard({
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('taskId', task.id)
         e.dataTransfer.setData('fromDay', dayShort)
+        e.dataTransfer.setData('taskDuration', String(task.duration))
+        e.dataTransfer.setData('taskName', task.name)
       }}
       onMouseEnter={(e) => (e.currentTarget.style.zIndex = '100')}
       onMouseLeave={(e) => (e.currentTarget.style.zIndex = String(overlapIndex + 1))}
