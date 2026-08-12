@@ -3,7 +3,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState, useEffect, useMemo, use } from 'react'
-import { TreePine, Sun, Moon } from 'lucide-react'
+import { Sun, Moon } from 'lucide-react'
+import { LogoBadge } from '@/components/LogoBadge'
 import {
   getWeekDays,
   getCurrentMonthYear,
@@ -232,13 +233,13 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
   return (
     <div className={`min-h-screen pt-24 sm:pt-28 md:pt-32 pb-12 px-3 sm:px-4 md:px-6 relative transition-colors overflow-hidden ${
-      isDark ? 'bg-[#121214] text-zinc-100' : 'bg-[#FAF9F6] text-[#1a2e23]'
+      isDark ? 'bg-[#121214] text-zinc-100' : 'bg-[#F5F4F0] text-[#1a2e23]'
     }`}>
-      {/* Background Ambient Radial Glow Mesh */}
+      {/* Subtle ambient gradient */}
       <div className={`fixed inset-0 pointer-events-none z-0 ${
         isDark
-          ? 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(45,95,62,0.25),rgba(18,18,20,0))]'
-          : 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(45,95,62,0.12),rgba(250,249,246,0))]'
+          ? 'bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(45,95,62,0.18),transparent)]'
+          : 'bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(45,95,62,0.08),transparent)]'
       }`} />
 
       {/* Totoro Companion Artwork */}
@@ -256,19 +257,12 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         />
       </div>
 
-      {/* Top Navbar matching DailyForest homepage */}
-      <nav className={`fixed top-0 inset-x-0 z-50 backdrop-blur-lg border-b transition-colors ${
-        isDark ? 'bg-[#18181b]/80 border-white/10' : 'bg-[#FAF9F6]/80 border-black/[0.04]'
+      <nav className={`fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b transition-colors ${
+        isDark ? 'bg-[#121214]/90 border-white/10' : 'bg-[#F5F4F0]/90 border-black/[0.06]'
       }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className={`p-1.5 rounded-xl border transition-colors ${
-              isDark ? 'bg-zinc-800 border-white/10' : 'bg-white border-black/[0.04]'
-            }`}>
-              <TreePine className={`w-4 h-4 transition-transform group-hover:scale-110 ${
-                isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
-              }`} />
-            </div>
+            <LogoBadge size={30} className="transition-transform group-hover:scale-105" />
             <span className={`text-lg font-handwritten font-bold ${
               isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
             }`}>
@@ -325,8 +319,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         <div
           className={`rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-xl relative z-30 border transition-colors ${
             isDark
-              ? 'bg-zinc-900/90 border-white/10 shadow-black/40'
-              : 'bg-white/90 border-[#2D5F3E]/10 shadow-[0_12px_36px_rgba(45,95,62,0.06)]'
+              ? 'bg-zinc-900/95 border-white/10 shadow-black/40'
+              : 'bg-white/95 border-black/[0.05] shadow-[0_8px_32px_rgba(0,0,0,0.06)]'
           }`}
         >
           <Header
@@ -362,8 +356,34 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
         {/* Timeline Grid Container */}
         {!isLoaded ? (
-          <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 rounded-3xl backdrop-blur-md bg-white/50 dark:bg-zinc-900/50 border border-black/5 dark:border-white/10 animate-pulse">
-            <p className="text-sm font-semibold opacity-70">Loading calendar...</p>
+          <div className={`rounded-2xl sm:rounded-3xl overflow-hidden border backdrop-blur-2xl ${
+            isDark ? 'bg-zinc-900/40 border-white/10' : 'bg-white/30 border-white/60'
+          }`}>
+            {/* Skeleton header row */}
+            <div className={`flex border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
+              <div className={`w-16 sm:w-20 md:w-24 flex-shrink-0 border-r py-4 ${isDark ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-200 bg-zinc-50'}`} />
+              {Array.from({ length: 7 }).map((_, i) => (
+                <div key={i} className={`flex-1 py-4 px-3 border-r last:border-r-0 ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
+                  <div className={`w-6 h-2 rounded-full mx-auto mb-2 animate-pulse ${isDark ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+                  <div className={`w-8 h-5 rounded-lg mx-auto animate-pulse ${isDark ? 'bg-zinc-700' : 'bg-zinc-200'}`} />
+                </div>
+              ))}
+            </div>
+            {/* Skeleton rows */}
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`flex border-b last:border-b-0 ${isDark ? 'border-zinc-800' : 'border-zinc-100'}`}>
+                <div className={`w-16 sm:w-20 md:w-24 flex-shrink-0 border-r h-20 flex items-start justify-end pr-3 pt-1.5 ${isDark ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-200 bg-zinc-50'}`}>
+                  <div className={`w-12 h-2.5 rounded-full animate-pulse ${isDark ? 'bg-zinc-700' : 'bg-zinc-200'}`} style={{ animationDelay: `${i * 80}ms` }} />
+                </div>
+                {Array.from({ length: 7 }).map((_, j) => (
+                  <div key={j} className={`flex-1 h-20 border-r last:border-r-0 p-2 ${isDark ? 'border-zinc-800' : 'border-zinc-100'}`}>
+                    {(i + j) % 5 === 0 && (
+                      <div className={`w-full h-12 rounded-md animate-pulse ${isDark ? 'bg-zinc-800' : 'bg-zinc-100'}`} style={{ animationDelay: `${(i + j) * 60}ms` }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
           </div>
         ) : (isPrivate || serverPrivacyState.isPrivate) && (isLocked && serverPrivacyState.isLocked) ? (
           <PrivacyLockScreen

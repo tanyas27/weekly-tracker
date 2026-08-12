@@ -21,19 +21,6 @@ export function DaySelector({
 }: DaySelectorProps) {
   return (
     <div className="flex gap-2 sm:gap-3 items-center overflow-x-auto pb-1 pt-2">
-      {/* Timezone pill */}
-      <div
-        className={`flex-shrink-0 px-3 py-3 sm:py-4 rounded-2xl border flex items-center justify-center backdrop-blur-md transition-all shadow-2xs ${
-          isDark
-            ? 'border-white/10 bg-zinc-800/60 text-zinc-400'
-            : 'border-black/[0.05] bg-white/80 text-[#1a2e23]/60'
-        }`}
-      >
-        <div className="text-xs font-bold tracking-tight text-center whitespace-nowrap">
-          {timezone}
-        </div>
-      </div>
-
       {/* Mobile view day switcher (< TUE 11 >) */}
       <div className="md:hidden flex items-center gap-2 flex-1 min-w-0">
         <button
@@ -51,14 +38,14 @@ export function DaySelector({
 
         {activeMobileDay && (
           <div
-            className={`flex-1 py-2.5 px-4 rounded-2xl border text-center shadow-xs backdrop-blur-md transition-all ${
+            className={`flex-1 py-2.5 px-4 rounded-2xl border text-center backdrop-blur-xl transition-all ${
               activeMobileDay.isToday
                 ? isDark
-                  ? 'bg-zinc-800/90 border-[#BDCC8D]/50 shadow-md ring-2 ring-[#BDCC8D]/30'
-                  : 'bg-white/95 border-[#2D5F3E]/40 text-[#1a2e23] shadow-md ring-2 ring-[#2D5F3E]/20'
+                  ? 'bg-zinc-800/60 border-[#BDCC8D]/40 shadow-md ring-1 ring-[#BDCC8D]/30'
+                  : 'bg-white/70 border-[#2D5F3E]/30 shadow-md ring-1 ring-[#2D5F3E]/20'
                 : isDark
-                  ? 'border-white/10 bg-zinc-900/60'
-                  : 'border-black/[0.04] bg-white/75'
+                  ? 'border-white/10 bg-zinc-900/30'
+                  : 'border-white/50 bg-white/30'
             }`}
           >
             <div className={`text-[11px] font-extrabold tracking-wider uppercase ${
@@ -88,19 +75,28 @@ export function DaySelector({
         </button>
       </div>
 
+      {/* Desktop: TIME label aligned above the grid's time gutter */}
+      <div className={`hidden md:flex flex-shrink-0 w-16 sm:w-20 md:w-24 items-center justify-center rounded-2xl border py-3.5 sm:py-4 ${
+        isDark
+          ? 'border-zinc-800 bg-zinc-900/80 text-zinc-500'
+          : 'border-black/[0.05] bg-white/90 text-zinc-400'
+      }`}>
+        <span className="text-[10px] font-black tracking-widest uppercase">TIME</span>
+      </div>
+
       {/* Desktop view 7-day grid strip */}
       <div className="hidden md:flex gap-2.5 sm:gap-3 flex-1">
         {days.map((day) => (
           <div
             key={day.short}
-            className={`flex-1 min-w-[68px] sm:min-w-[88px] md:min-w-[104px] py-3.5 sm:py-4 px-2 sm:px-3 rounded-2xl border transition-all text-center backdrop-blur-md ${
+            className={`flex-1 min-w-[68px] sm:min-w-[88px] md:min-w-[104px] py-3.5 sm:py-4 px-2 sm:px-3 rounded-2xl border transition-all text-center ${
               day.isToday
                 ? isDark
-                  ? 'bg-zinc-800/90 border-[#BDCC8D]/50 shadow-md ring-2 ring-[#BDCC8D]/30'
-                  : 'bg-white/95 border-[#2D5F3E]/40 shadow-md ring-2 ring-[#2D5F3E]/20'
+                  ? 'bg-zinc-800 border-zinc-700 shadow-md ring-1 ring-[#BDCC8D]/40'
+                  : 'bg-white border-[#2D5F3E]/20 shadow-md ring-1 ring-[#2D5F3E]/20'
                 : isDark
-                  ? 'border-white/10 bg-zinc-900/60 hover:border-white/20 hover:bg-zinc-800/80 hover:shadow-md'
-                  : 'border-black/[0.04] bg-white/75 hover:bg-white/95 hover:shadow-md'
+                  ? 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700'
+                  : 'border-black/[0.05] bg-white/70 hover:bg-white hover:shadow-sm'
             }`}
           >
             <div className={`text-xs mb-1 font-extrabold tracking-wider uppercase ${

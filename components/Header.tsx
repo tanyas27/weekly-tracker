@@ -192,21 +192,21 @@ export function Header({
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md shadow-2xs transition-all cursor-pointer ${
                   isPrivate
                     ? isDark
-                      ? 'bg-amber-950/60 border-amber-800/60 text-amber-300 hover:bg-amber-900/60'
-                      : 'bg-amber-50 border-amber-200/80 text-amber-900 hover:bg-amber-100'
+                      ? 'bg-pink-950/60 border-pink-800/60 text-pink-300 hover:bg-pink-900/60'
+                      : 'bg-pink-50 border-pink-200/80 text-pink-700 hover:bg-pink-100'
                     : isDark
-                      ? 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300 hover:bg-emerald-900/60'
-                      : 'bg-emerald-50 border-emerald-200/60 text-emerald-800 hover:bg-emerald-100'
+                      ? 'bg-sky-950/60 border-sky-800/60 text-sky-300 hover:bg-sky-900/60'
+                      : 'bg-sky-50 border-sky-200/60 text-sky-700 hover:bg-sky-100'
                 }`}
               >
                 {isPrivate ? (
                   <>
-                    <Lock className="w-3.5 h-3.5 text-amber-500" />
+                    <Lock className="w-3.5 h-3.5 text-pink-500" />
                     <span>Private</span>
                   </>
                 ) : (
                   <>
-                    <Globe className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    <Globe className="w-3.5 h-3.5 text-sky-500" />
                     <span>Public</span>
                   </>
                 )}

@@ -1,5 +1,5 @@
 import React from 'react'
-import { Bell } from 'lucide-react'
+import { Bell, ChevronUp, ChevronDown } from 'lucide-react'
 import { DayInfo, COLORS } from '../lib/time-utils'
 import { TaskModalFormData } from '../hooks/useTasks'
 import { TimePicker } from './TimePicker'
@@ -57,7 +57,7 @@ export function TaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4"
+      className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-end sm:items-center justify-center z-50 p-0 sm:p-6"
       onClick={onClose}
     >
       <div
@@ -66,101 +66,154 @@ export function TaskModal({
         aria-modal="true"
         aria-labelledby="task-modal-title"
         tabIndex={-1}
-        className={`rounded-2xl md:rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-4 sm:p-6 backdrop-blur-2xl backdrop-saturate-150 border ${
-          isDark ? 'bg-gray-800/75 border-white/10' : 'bg-white/50 border-white/40'
+        className={`w-full sm:max-w-lg max-h-[92vh] sm:max-h-[min(90vh,780px)] flex flex-col rounded-t-[2rem] sm:rounded-[1.75rem] shadow-2xl border overflow-hidden backdrop-blur-3xl transition-all ${
+          isDark
+            ? 'bg-zinc-900/80 border-white/10 shadow-black/70'
+            : 'bg-white/70 border-white/80 shadow-[0_24px_80px_rgba(0,0,0,0.20)]'
         }`}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <h2
-          id="task-modal-title"
-          className={`text-xl sm:text-2xl font-bold tracking-tight mb-4 pb-3 border-b ${
-            isDark ? 'text-gray-100 border-white/10' : 'text-gray-900 border-white/30'
-          }`}
-        >
-          {modalData.id ? 'Edit Task' : 'Add New Task'}
-        </h2>
+        {/* Drag handle — mobile only */}
+        <div className="flex justify-center pt-3 pb-0 sm:hidden flex-shrink-0">
+          <div className={`w-10 h-1 rounded-full ${isDark ? 'bg-white/20' : 'bg-black/15'}`} />
+        </div>
 
-        <div className="space-y-4">
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Task Name
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={modalData.name}
-              onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg backdrop-blur-sm focus:ring-2 focus:border-transparent outline-none transition-colors ${
-                isDark
-                  ? 'border-white/10 bg-gray-900/40 text-white placeholder:text-gray-500 focus:ring-[#8BB783]'
-                  : 'border-white/40 bg-white/50 text-gray-900 placeholder:text-gray-500 focus:ring-[#57907C]'
-              }`}
-              placeholder="Enter task name (Press Cmd/Ctrl+Enter to save)"
-              autoFocus
-            />
-          </div>
-
-          <div>
-            <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-              Days
-            </label>
-            <div className="flex flex-nowrap gap-2 sm:gap-3 overflow-x-auto px-1 pb-2 pt-1">
-              {days.map((day) => {
-                const isSelected = modalData.days.includes(day.short)
-                return (
-                  <button
-                    key={day.short}
-                    type="button"
-                    onClick={() => {
-                      setModalData((prev) => ({
-                        ...prev,
-                        days: prev.days.includes(day.short)
-                          ? prev.days.filter((selectedDay) => selectedDay !== day.short)
-                          : [...prev.days, day.short]
-                      }))
-                    }}
-                    aria-pressed={isSelected}
-                    aria-label={`Toggle ${day.short}`}
-                    className={`relative flex-shrink-0 px-3.5 py-2 sm:px-4 sm:py-2.5 rounded-full text-xs sm:text-sm font-semibold tracking-wide overflow-hidden transition-all hover:scale-105 ${
-                      isSelected
-                        ? isDark
-                          ? 'bg-[#BDCC8D] text-gray-900 shadow-[0_4px_12px_rgba(139,183,131,0.4),inset_0_1px_1px_rgba(255,255,255,0.5)]'
-                          : 'bg-[#8BB783] text-gray-900 shadow-[0_4px_12px_rgba(87,144,124,0.45),inset_0_1px_1px_rgba(255,255,255,0.6)]'
-                        : isDark
-                          ? 'bg-gray-800/40 border border-gray-700 text-gray-300 shadow-[0_2px_6px_rgba(0,0,0,0.25),inset_0_1px_1px_rgba(255,255,255,0.08)]'
-                          : 'bg-white/40 border border-white/50 text-gray-700 shadow-[0_2px_6px_rgba(0,0,0,0.08),inset_0_1px_1px_rgba(255,255,255,0.6)]'
-                    }`}
-                  >
-                    {/* Glossy droplet highlight */}
-                    <span
-                      className={`pointer-events-none absolute top-1 left-2.5 w-1.5 h-1.5 rounded-full blur-[0.5px] ${
-                        isSelected ? 'bg-white/70' : isDark ? 'bg-white/20' : 'bg-white/60'
-                      }`}
-                    />
-                    <span className="relative z-10">{day.short}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Start Time
-              </label>
-              <TimePicker
-                value={modalData.startTime}
-                onChange={(startTime) => setModalData({ ...modalData, startTime })}
-                isDark={isDark}
+        {/* Colored header — takes the selected task color */}
+        <div className={`flex-shrink-0 px-6 pt-5 sm:pt-6 pb-5 ${modalData.color} relative overflow-hidden`}>
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/20 pointer-events-none" />
+          <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-black/5 pointer-events-none" />
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black tracking-[0.2em] uppercase text-gray-600/70 mb-2">
+                {modalData.id ? 'Edit task' : 'New task'}
+              </p>
+              <input
+                ref={inputRef}
+                id="task-modal-title"
+                type="text"
+                value={modalData.name}
+                onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
+                className="w-full bg-transparent outline-none text-[1.6rem] leading-tight font-bold text-gray-900 placeholder:text-gray-600/40"
+                style={{ fontFamily: 'var(--font-handwritten)' }}
+                placeholder="What needs doing?"
+                autoFocus
               />
             </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors mt-0.5"
+            >
+              <svg className="w-3.5 h-3.5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-5 sm:px-7 py-5 space-y-5">
+
+            {/* Days */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Color
-              </label>
+              <p className={`text-[9px] font-black tracking-[0.18em] uppercase mb-3 ${
+                isDark ? 'text-zinc-500' : 'text-zinc-400'
+              }`}>Days</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {days.map((day) => {
+                  const isSelected = modalData.days.includes(day.short)
+                  return (
+                    <button
+                      key={day.short}
+                      type="button"
+                      onClick={() => {
+                        setModalData((prev) => ({
+                          ...prev,
+                          days: prev.days.includes(day.short)
+                            ? prev.days.filter((d) => d !== day.short)
+                            : [...prev.days, day.short],
+                        }))
+                      }}
+                      aria-pressed={isSelected}
+                      aria-label={`Toggle ${day.short}`}
+                      className={`px-3.5 py-2 rounded-full text-xs font-bold tracking-wide transition-all active:scale-95 ${
+                        isSelected
+                          ? isDark
+                            ? 'bg-[#BDCC8D] text-zinc-900 shadow-sm'
+                            : 'bg-[#2D5F3E] text-white shadow-sm'
+                          : isDark
+                            ? 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:text-zinc-200'
+                            : 'bg-white/60 text-zinc-500 border border-zinc-200/80 hover:bg-white hover:text-zinc-700'
+                      }`}
+                    >
+                      {day.short}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Time + Duration in a frosted section card */}
+            <div className={`rounded-2xl p-5 border ${
+              isDark ? 'bg-white/[0.04] border-white/[0.07]' : 'bg-white/50 border-white/80'
+            }`}>
+              <div className="grid grid-cols-[3fr_2fr] gap-8 items-start">
+                <div>
+                  <p className={`text-[9px] font-black tracking-[0.18em] uppercase mb-3 ${
+                    isDark ? 'text-zinc-500' : 'text-zinc-400'
+                  }`}>Start Time</p>
+                  <TimePicker
+                    value={modalData.startTime}
+                    onChange={(startTime) => setModalData({ ...modalData, startTime })}
+                    isDark={isDark}
+                  />
+                </div>
+                <div>
+                  <p className={`text-[9px] font-black tracking-[0.18em] uppercase mb-3 ${
+                    isDark ? 'text-zinc-500' : 'text-zinc-400'
+                  }`}>Duration</p>
+                  {/* Duration stepper with hrs label on the right */}
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex flex-col items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setModalData({ ...modalData, duration: Math.min(8, +(modalData.duration + 0.5).toFixed(2)) })}
+                        className={`w-8 h-5 flex items-center justify-center rounded-md transition-colors ${
+                          isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                        }`}
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </button>
+                      <div className={`w-16 h-14 flex items-center justify-center rounded-xl border-2 ${
+                        isDark ? 'border-white/10 bg-gray-900/40 text-white' : 'border-white/40 bg-white/50 text-gray-900'
+                      }`}>
+                        <span className="text-2xl font-extrabold leading-none">
+                          {Number.isInteger(modalData.duration) ? modalData.duration : modalData.duration.toFixed(1)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setModalData({ ...modalData, duration: Math.max(0.25, +(modalData.duration - 0.5).toFixed(2)) })}
+                        className={`w-8 h-5 flex items-center justify-center rounded-md transition-colors ${
+                          isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                        }`}
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <span className={`text-sm font-bold tracking-wide ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>hrs</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Color */}
+            <div>
+              <p className={`text-[9px] font-black tracking-[0.18em] uppercase mb-3 ${
+                isDark ? 'text-zinc-500' : 'text-zinc-400'
+              }`}>Color</p>
               <div className="flex gap-2 flex-wrap">
                 {COLORS.map((color, idx) => (
                   <button
@@ -168,44 +221,28 @@ export function TaskModal({
                     type="button"
                     onClick={() => setModalData({ ...modalData, color })}
                     aria-label={`Select color ${idx + 1}`}
-                    className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border-2 shadow-sm transition-all ${color} ${
+                    className={`w-8 h-8 rounded-full relative transition-all ${color} ${
                       modalData.color === color
-                        ? 'border-white scale-110 shadow-md'
-                        : 'border-transparent hover:scale-105'
+                        ? 'ring-[3px] ring-offset-2 ring-zinc-400/70 scale-110 shadow-lg'
+                        : 'opacity-70 hover:opacity-100 hover:scale-110'
                     }`}
-                  />
+                  >
+                    {modalData.color === color && (
+                      <svg className="w-3.5 h-3.5 text-gray-700/80 absolute inset-0 m-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-1">
-              <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                Duration (hrs)
-              </label>
-              <input
-                type="number"
-                min="0.25"
-                max="8"
-                step="0.25"
-                value={modalData.duration}
-                onChange={(e) =>
-                  setModalData({ ...modalData, duration: parseFloat(e.target.value) || 0.25 })
-                }
-                className={`w-full px-4 py-2 border rounded-lg backdrop-blur-sm focus:ring-2 focus:border-transparent outline-none transition-colors ${
-                  isDark
-                    ? 'border-white/10 bg-gray-900/40 text-white focus:ring-[#8BB783]'
-                    : 'border-white/40 bg-white/50 text-gray-900 focus:ring-[#57907C]'
-                }`}
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className={`block text-sm font-medium mb-2 flex items-center gap-1.5 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                <span>Reminder</span>
-                <Bell className="w-3.5 h-3.5 text-gray-500" />
-              </label>
+            {/* Reminder */}            <div>
+              <p className={`flex items-center gap-1.5 text-[9px] font-black tracking-[0.18em] uppercase mb-2.5 ${
+                isDark ? 'text-zinc-500' : 'text-zinc-400'
+              }`}>
+                <Bell className="w-3 h-3" /> Reminder
+              </p>
               <select
                 value={
                   modalData.reminderOffset === null
@@ -215,21 +252,18 @@ export function TaskModal({
                     : -1
                 }
                 onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  setModalData({
-                    ...modalData,
-                    reminderOffset: val === -2 ? null : val === -1 ? undefined : val,
-                  });
+                  const val = parseInt(e.target.value, 10)
+                  setModalData({ ...modalData, reminderOffset: val === -2 ? null : val === -1 ? undefined : val })
                 }}
-                className={`w-full px-4 py-2 border rounded-lg backdrop-blur-sm focus:ring-2 focus:border-transparent outline-none transition-colors ${
+                className={`w-full px-4 py-2.5 border rounded-xl text-sm font-medium outline-none transition-all focus:ring-2 ${
                   isDark
-                    ? 'border-white/10 bg-gray-900/40 text-white focus:ring-[#8BB783]'
-                    : 'border-white/40 bg-white/50 text-gray-900 focus:ring-[#57907C]'
+                    ? 'border-zinc-700/60 bg-zinc-800/50 text-zinc-200 focus:ring-[#BDCC8D]/30'
+                    : 'border-zinc-200/60 bg-white/60 text-zinc-800 focus:ring-[#2D5F3E]/20'
                 }`}
               >
                 <option value={-1}>Use Global Default</option>
-                <option value={-2}>None (No notification for this task)</option>
-                <option value={0}>At task start time (0 min)</option>
+                <option value={-2}>None</option>
+                <option value={0}>At task start time</option>
                 <option value={5}>5 minutes before</option>
                 <option value={10}>10 minutes before</option>
                 <option value={15}>15 minutes before</option>
@@ -237,40 +271,47 @@ export function TaskModal({
               </select>
             </div>
           </div>
+        </div>
 
-          <div className="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-            {modalData.id && (
-              <button
-                type="button"
-                onClick={onDelete}
-                className="px-4 py-2 bg-red-500 text-white rounded-lg shadow-sm hover:bg-red-600 transition-colors"
-              >
-                Delete
-              </button>
-            )}
+        {/* Footer */}
+        <div className={`flex-shrink-0 flex items-center gap-2.5 px-5 sm:px-6 py-4 border-t ${
+          isDark ? 'border-white/[0.07] bg-zinc-900/20' : 'border-white/60 bg-white/20'
+        }`}>
+          {modalData.id && (
             <button
               type="button"
-              onClick={onClose}
-              className={`flex-1 px-4 py-2 rounded-lg border backdrop-blur-sm font-medium transition-colors ${
+              onClick={onDelete}
+              className={`px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
                 isDark
-                  ? 'bg-white/5 border-white/10 text-gray-300 hover:bg-white/10'
-                  : 'bg-white/40 border-white/40 text-gray-700 hover:bg-white/60'
+                  ? 'border-rose-800/60 bg-rose-950/40 text-rose-400 hover:bg-rose-900/60'
+                  : 'border-rose-200 bg-rose-50/80 text-rose-600 hover:bg-rose-100'
               }`}
             >
-              Cancel
+              Delete
             </button>
-            <button
-              type="button"
-              onClick={onSave}
-              className={`flex-1 px-4 py-2 rounded-lg font-semibold shadow-md transition-colors ${
-                isDark
-                  ? 'bg-[#BDCC8D] text-gray-900 hover:bg-[#D3E1C5]'
-                  : 'bg-[#8BB783] text-gray-900 hover:bg-[#75AC83]'
-              }`}
-            >
-              {modalData.id ? 'Save' : 'Add Task'}
-            </button>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
+              isDark
+                ? 'border-zinc-700 bg-zinc-800/50 text-zinc-300 hover:bg-zinc-700'
+                : 'border-zinc-200/80 bg-white/50 text-zinc-600 hover:bg-white/80'
+            }`}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className={`flex-1 px-4 py-2.5 rounded-xl text-sm font-bold shadow-md transition-all active:scale-95 ${
+              isDark
+                ? 'bg-[#BDCC8D] text-zinc-900 hover:bg-[#c9d79c] shadow-[#BDCC8D]/20'
+                : 'bg-[#2D5F3E] text-white hover:bg-[#245033] shadow-[#2D5F3E]/25'
+            }`}
+          >
+            {modalData.id ? 'Save Changes' : 'Add Task'}
+          </button>
         </div>
       </div>
     </div>

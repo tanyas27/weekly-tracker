@@ -10,7 +10,6 @@ import {
   Share2,
   WifiOff,
   ShieldCheck,
-  TreePine,
   Sun,
   Moon,
   Calendar,
@@ -18,6 +17,7 @@ import {
   Lock,
   ArrowUpRight,
 } from 'lucide-react'
+import { LogoBadge } from '@/components/LogoBadge'
 import {
   getRecentCalendars,
   clearRecentCalendars,
@@ -66,7 +66,7 @@ export default function LandingPage() {
         }`}>
           <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6">
             <Link href="/" className="flex items-center gap-2">
-              <TreePine className={`w-5 h-5 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
+              <LogoBadge size={28} />
               <span className={`text-lg font-handwritten font-bold ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`}>
                 DailyForest
               </span>
@@ -387,7 +387,7 @@ export default function LandingPage() {
         }`}>
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2">
-              <TreePine className={`w-4 h-4 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
+              <LogoBadge size={22} />
               <span className={`font-handwritten text-base font-semibold ${
                 isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
               }`}>
