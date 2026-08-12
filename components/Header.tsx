@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { nanoid } from 'nanoid'
 import { Share2, PlusCircle, Lock, Calendar, Globe, Bell } from 'lucide-react'

@@ -76,10 +76,10 @@ export function DaySelector({
       </div>
 
       {/* Desktop: TIME label aligned above the grid's time gutter */}
-      <div className={`hidden md:flex flex-shrink-0 w-16 sm:w-20 md:w-24 items-center justify-center rounded-2xl border py-3.5 sm:py-4 ${
+      <div className={`hidden md:flex flex-shrink-0 w-16 sm:w-20 md:w-24 items-center justify-center rounded-2xl border py-3.5 sm:py-4 backdrop-blur-xl ${
         isDark
-          ? 'border-zinc-800 bg-zinc-900/80 text-zinc-500'
-          : 'border-black/[0.05] bg-white/90 text-zinc-400'
+          ? 'border-white/10 bg-zinc-900/40 text-zinc-500'
+          : 'border-white/50 bg-white/30 text-zinc-400'
       }`}>
         <span className="text-[10px] font-black tracking-widest uppercase">TIME</span>
       </div>
@@ -89,14 +89,14 @@ export function DaySelector({
         {days.map((day) => (
           <div
             key={day.short}
-            className={`flex-1 min-w-[68px] sm:min-w-[88px] md:min-w-[104px] py-3.5 sm:py-4 px-2 sm:px-3 rounded-2xl border transition-all text-center ${
+            className={`flex-1 min-w-[68px] sm:min-w-[88px] md:min-w-[104px] py-3.5 sm:py-4 px-2 sm:px-3 rounded-2xl border transition-all text-center backdrop-blur-xl ${
               day.isToday
                 ? isDark
-                  ? 'bg-zinc-800 border-zinc-700 shadow-md ring-1 ring-[#BDCC8D]/40'
-                  : 'bg-white border-[#2D5F3E]/20 shadow-md ring-1 ring-[#2D5F3E]/20'
+                  ? 'bg-zinc-800/60 border-[#BDCC8D]/40 shadow-lg ring-1 ring-[#BDCC8D]/30'
+                  : 'bg-white/70 border-[#2D5F3E]/30 shadow-lg ring-1 ring-[#2D5F3E]/20'
                 : isDark
-                  ? 'border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 hover:border-zinc-700'
-                  : 'border-black/[0.05] bg-white/70 hover:bg-white hover:shadow-sm'
+                  ? 'border-white/10 bg-zinc-900/30 hover:bg-zinc-800/50 hover:border-white/20'
+                  : 'border-white/40 bg-white/25 hover:bg-white/55 hover:shadow-md'
             }`}
           >
             <div className={`text-xs mb-1 font-extrabold tracking-wider uppercase ${

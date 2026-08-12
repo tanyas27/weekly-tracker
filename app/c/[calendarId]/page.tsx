@@ -232,18 +232,30 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
   })
 
   return (
-    <div className={`min-h-screen pt-24 sm:pt-28 md:pt-32 pb-12 px-3 sm:px-4 md:px-6 relative transition-colors overflow-hidden ${
-      isDark ? 'bg-[#121214] text-zinc-100' : 'bg-[#F5F4F0] text-[#1a2e23]'
+    <div className={`min-h-screen pt-16 sm:pt-18 md:pt-20 pb-12 px-1 sm:px-2 md:px-3 relative transition-colors overflow-hidden ${
+      isDark ? 'bg-[#0e1410] text-zinc-100' : 'bg-[#d4dfc8] text-[#1a2e23]'
     }`}>
-      {/* Subtle ambient gradient */}
+      {/* Ghibli background artwork */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Image
+          src="/bcg.jpg"
+          alt=""
+          fill
+          className={`object-cover transition-opacity duration-500 ${
+            isDark ? 'opacity-25' : 'opacity-55'
+          }`}
+          priority
+          quality={70}
+          sizes="100vw"
+        />
+      </div>
+      {/* Dark overlay to keep text readable */}
       <div className={`fixed inset-0 pointer-events-none z-0 ${
-        isDark
-          ? 'bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(45,95,62,0.18),transparent)]'
-          : 'bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(45,95,62,0.08),transparent)]'
+        isDark ? 'bg-[#0e1410]/65' : 'bg-white/20'
       }`} />
 
-      {/* Totoro Companion Artwork */}
-      <div className={`hidden lg:block fixed -left-16 bottom-16 pointer-events-none z-0 transition-opacity ${
+      {/* Totoro — bottom right */}
+      <div className={`hidden lg:block fixed -right-16 bottom-16 pointer-events-none z-0 transition-opacity ${
         isDark ? 'opacity-40' : 'opacity-70'
       }`}>
         <Image
@@ -258,7 +270,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       </div>
 
       <nav className={`fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b transition-colors ${
-        isDark ? 'bg-[#121214]/90 border-white/10' : 'bg-[#F5F4F0]/90 border-black/[0.06]'
+        isDark ? 'bg-[#0e1410]/60 border-white/10' : 'bg-white/30 border-white/50'
       }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6">
           <Link href="/" className="flex items-center gap-2 group">
@@ -317,10 +329,10 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header & Date Selector Card */}
         <div
-          className={`rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-xl relative z-30 border transition-colors ${
+          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${
             isDark
-              ? 'bg-zinc-900/95 border-white/10 shadow-black/40'
-              : 'bg-white/95 border-black/[0.05] shadow-[0_8px_32px_rgba(0,0,0,0.06)]'
+              ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
+              : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.12)]'
           }`}
         >
           <Header
@@ -409,6 +421,14 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
               onOpenAddModal={openAddModal}
               onOpenEditModal={openEditModal}
               onToggleComplete={handleToggleComplete}
+              onMoveTask={(taskId, fromDay, toDay, slotIndex) => {
+                const task = tasks.find((t) => t.id === taskId)
+                if (!task) return
+                const newHour = 7 + slotIndex
+                const newStartTime = `${newHour.toString().padStart(2, '0')}:00`
+                const newDays = task.days.length === 1 ? [toDay] : task.days
+                saveTask({ id: taskId, name: task.name, days: newDays, startTime: newStartTime, duration: task.duration, color: task.color, reminderOffset: task.reminderOffset })
+              }}
             />
 
             <TaskModal

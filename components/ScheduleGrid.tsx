@@ -14,6 +14,7 @@ interface ScheduleGridProps {
   onOpenAddModal: (day: string, timeSlotIndex: number) => void
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
+  onMoveTask: (taskId: string, fromDay: string, toDay: string, slotIndex: number) => void
 }
 
 interface DayColumnProps {
@@ -25,41 +26,8 @@ interface DayColumnProps {
   onOpenAddModal: (day: string, timeSlotIndex: number) => void
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
+  onMoveTask: (taskId: string, fromDay: string, toDay: string, slotIndex: number) => void
 }
-
-interface DayHeaderCellProps {
-  day: DayInfo
-  isDark: boolean
-  minWidthClassName?: string
-}
-
-const DayHeaderCell = React.memo(function DayHeaderCell({ day, isDark, minWidthClassName = 'flex-1 min-w-[140px]' }: DayHeaderCellProps) {
-  return (
-    <div
-      className={`${minWidthClassName} border-r last:border-r-0 py-3 sm:py-3.5 text-center select-none transition-colors ${
-        day.isToday
-          ? isDark ? 'bg-[#BDCC8D]/[0.08] border-zinc-700' : 'bg-[#2D5F3E]/[0.05] border-zinc-200'
-          : isDark ? 'border-zinc-800' : 'border-zinc-200'
-      }`}
-    >
-      <div className={`text-[9px] sm:text-[10px] font-extrabold tracking-widest uppercase ${
-        day.isToday ? (isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]') : (isDark ? 'text-zinc-500' : 'text-zinc-400')
-      }`}>
-        {day.short}
-      </div>
-      <div className={`text-xl sm:text-2xl font-extrabold leading-tight mt-0.5 ${
-        day.isToday ? (isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]') : (isDark ? 'text-zinc-100' : 'text-[#1a2e23]')
-      }`}>
-        {day.date}
-      </div>
-      {day.isToday && (
-        <div className={`mx-auto mt-1.5 w-1.5 h-1.5 rounded-full ${
-          isDark ? 'bg-[#BDCC8D]' : 'bg-[#2D5F3E]'
-        }`} />
-      )}
-    </div>
-  )
-})
 
 // Single day's timeline column; reused for both the mobile single-day view and the desktop 7-day view.
 const DayColumn = React.memo(function DayColumn({
@@ -70,39 +38,56 @@ const DayColumn = React.memo(function DayColumn({
   minWidthClassName,
   onOpenAddModal,
   onOpenEditModal,
-  onToggleComplete
+  onToggleComplete,
+  onMoveTask,
 }: DayColumnProps) {
+  const [dragOverSlot, setDragOverSlot] = React.useState<number | null>(null)
+
   return (
     <div
       className={`flex-1 ${minWidthClassName} border-r last:border-r-0 relative transition-colors ${
         day.isToday
           ? isDark
-            ? 'bg-[#BDCC8D]/[0.06] border-zinc-800/80'
-            : 'bg-[#2D5F3E]/[0.04] border-black/[0.05]'
+            ? 'bg-[#BDCC8D]/[0.07] border-white/[0.08]'
+            : 'bg-[#2D5F3E]/[0.05] border-white/40'
           : isDark
-            ? 'border-zinc-800/80'
-            : 'border-black/[0.04]'
+            ? 'border-white/[0.06]'
+            : 'border-white/30'
       }`}
       style={{ height: TIME_SLOTS.length * SLOT_HEIGHT_PX }}
     >
       {TIME_SLOTS.map((_, idx) => {
         const timeHour = START_HOUR + idx
         const isCurrentHour = day.isToday && currentTimeHour >= timeHour && currentTimeHour < timeHour + 1
+        const isDragOver = dragOverSlot === idx
         return (
           <div
             key={idx}
             className={`h-20 border-b cursor-pointer transition-colors group relative ${
-              isDark
-                ? `border-zinc-800/60 hover:bg-[#BDCC8D]/[0.06] ${isCurrentHour ? 'bg-[#BDCC8D]/[0.09]' : ''}`
-                : `border-black/[0.04] hover:bg-[#2D5F3E]/[0.04] ${isCurrentHour ? 'bg-[#2D5F3E]/[0.06]' : ''}`
+              isDragOver
+                ? isDark ? 'bg-[#BDCC8D]/25 border-[#BDCC8D]/40' : 'bg-[#2D5F3E]/10 border-[#2D5F3E]/30'
+                : isDark
+                  ? `border-white/[0.05] hover:bg-white/[0.06] ${isCurrentHour ? 'bg-[#BDCC8D]/[0.10]' : ''}`
+                  : `border-white/25 hover:bg-white/25 ${isCurrentHour ? 'bg-[#2D5F3E]/[0.07]' : ''}`
             }`}
             onClick={() => onOpenAddModal(day.short, idx)}
+            onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOverSlot(idx) }}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverSlot(null) }}
+            onDrop={(e) => {
+              e.preventDefault()
+              setDragOverSlot(null)
+              const taskId = e.dataTransfer.getData('taskId')
+              const fromDay = e.dataTransfer.getData('fromDay')
+              if (taskId) onMoveTask(taskId, fromDay, day.short, idx)
+            }}
           >
-            <span className={`absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-[11px] font-bold ${
-              isDark ? 'text-zinc-300' : 'text-zinc-500'
-            }`}>
-              + Add
-            </span>
+            {!isDragOver && (
+              <span className={`absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-[11px] font-bold ${
+                isDark ? 'text-zinc-300' : 'text-zinc-500'
+              }`}>
+                + Add
+              </span>
+            )}
           </div>
         )
       })}
@@ -132,24 +117,25 @@ export function ScheduleGrid({
   isDark,
   onOpenAddModal,
   onOpenEditModal,
-  onToggleComplete
+  onToggleComplete,
+  onMoveTask,
 }: ScheduleGridProps) {
   const currentTimeTop = getCurrentTimePosition(currentTimeHour)
   const timeGutterCls = 'w-16 sm:w-20 md:w-24 flex-shrink-0'
 
   return (
     <div
-      className={`rounded-2xl sm:rounded-3xl shadow-xl overflow-hidden relative z-30 transition-colors border ${
+      className={`rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative z-30 transition-colors border backdrop-blur-xl ${
         isDark
-          ? 'bg-zinc-900 border-zinc-800/80 shadow-black/40'
-          : 'bg-white border-black/[0.06] shadow-[0_8px_32px_rgba(0,0,0,0.06)]'
+          ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
+          : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.10)]'
       }`}
     >
       {/* ── Grid body ── */}
       <div className="flex">
         {/* Timeline hours column */}
         <div className={`${timeGutterCls} border-r transition-colors ${
-          isDark ? 'border-zinc-800/80 bg-zinc-900' : 'border-black/[0.05] bg-zinc-50/80'
+          isDark ? 'border-white/[0.08] bg-zinc-900/40' : 'border-white/40 bg-white/30'
         }`}>
           {TIME_SLOTS.map((time) => (
             <div
@@ -189,6 +175,7 @@ export function ScheduleGrid({
                 onOpenAddModal={onOpenAddModal}
                 onOpenEditModal={onOpenEditModal}
                 onToggleComplete={onToggleComplete}
+                onMoveTask={onMoveTask}
               />
             )}
           </div>
@@ -206,6 +193,7 @@ export function ScheduleGrid({
                 onOpenAddModal={onOpenAddModal}
                 onOpenEditModal={onOpenEditModal}
                 onToggleComplete={onToggleComplete}
+                onMoveTask={onMoveTask}
               />
             ))}
           </div>
