@@ -174,36 +174,46 @@ export function TaskModal({
                   <p className={`text-[9px] font-black tracking-[0.18em] uppercase mb-3 ${
                     isDark ? 'text-zinc-500' : 'text-zinc-400'
                   }`}>Duration</p>
-                  {/* Duration stepper with hrs label on the right */}
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex flex-col items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setModalData({ ...modalData, duration: Math.min(8, +(modalData.duration + 0.5).toFixed(2)) })}
-                        className={`w-8 h-5 flex items-center justify-center rounded-md transition-colors ${
-                          isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
-                        }`}
-                      >
-                        <ChevronUp className="w-4 h-4" />
-                      </button>
-                      <div className={`w-16 h-14 flex items-center justify-center rounded-xl border-2 ${
-                        isDark ? 'border-white/10 bg-gray-900/40 text-white' : 'border-white/40 bg-white/50 text-gray-900'
-                      }`}>
-                        <span className="text-2xl font-extrabold leading-none">
-                          {Number.isInteger(modalData.duration) ? modalData.duration : modalData.duration.toFixed(1)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setModalData({ ...modalData, duration: Math.max(0.25, +(modalData.duration - 0.5).toFixed(2)) })}
-                        className={`w-8 h-5 flex items-center justify-center rounded-md transition-colors ${
-                          isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
-                        }`}
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </button>
+                  <div className="flex flex-col items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setModalData({ ...modalData, duration: Math.min(8, +(modalData.duration + 0.25).toFixed(2)) })}
+                      className={`w-8 h-5 flex items-center justify-center rounded-md transition-colors ${
+                        isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                      }`}
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </button>
+                    <div className={`w-20 h-14 flex flex-col items-center justify-center rounded-xl border-2 ${
+                      isDark ? 'border-white/10 bg-gray-900/40 text-white' : 'border-white/40 bg-white/50 text-gray-900'
+                    }`}>
+                      {(() => {
+                        const totalMins = Math.round(modalData.duration * 60)
+                        const h = Math.floor(totalMins / 60)
+                        const m = totalMins % 60
+                        if (h === 0) return (
+                          <><span className="text-xl font-extrabold leading-none">{m}</span>
+                          <span className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>mins</span></>
+                        )
+                        if (m === 0) return (
+                          <><span className="text-xl font-extrabold leading-none">{h}</span>
+                          <span className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>{h === 1 ? 'hr' : 'hrs'}</span></>
+                        )
+                        return (
+                          <><span className="text-base font-extrabold leading-none">{h}h {m}m</span>
+                          <span className={`text-[10px] font-bold mt-0.5 ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>duration</span></>
+                        )
+                      })()}
                     </div>
-                    <span className={`text-sm font-bold tracking-wide ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>hrs</span>
+                    <button
+                      type="button"
+                      onClick={() => setModalData({ ...modalData, duration: Math.max(0.25, +(modalData.duration - 0.25).toFixed(2)) })}
+                      className={`w-8 h-5 flex items-center justify-center rounded-md transition-colors ${
+                        isDark ? 'text-gray-400 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:text-gray-900 hover:bg-white/50'
+                      }`}
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               </div>
