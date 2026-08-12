@@ -19,9 +19,8 @@ export function PrivacyLockScreen({ calendarTitle, isDark, onUnlock }: PrivacyLo
     setError(null)
 
     const res = await onUnlock(passcode.trim())
-    setLoading(false)
-
     if (!res.success) {
+      setLoading(false)
       setError(res.error || 'Incorrect passcode')
     }
   }

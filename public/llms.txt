@@ -1,0 +1,14 @@
+# DailyForest
+
+> A free, open-source daily and weekly planner web application featuring time blocking, shareable multi-tenant calendars, Studio Ghibli-inspired aesthetic, and full PWA offline support.
+
+## Key Features
+- [Time Blocking](https://dailyforest.vercel.app): Visual drag-and-drop daily timeline scheduler.
+- [Shareable Calendars](https://dailyforest.vercel.app): Share schedule links with real-time multi-tenant sync.
+- [Offline PWA Support](https://dailyforest.vercel.app): Full service worker caching for offline planning.
+- [Privacy Controls](https://dailyforest.vercel.app): Optional passcode hashing and local storage privacy locks.
+- [Aesthetic Ghibli Design](https://dailyforest.vercel.app): Warm pastel theme, handwritten font, and glassmorphism.
+
+## Developer & Source Code
+- [GitHub Repository](https://github.com/tanyas27/weekly-tracker)
+- [Technology Stack](https://github.com/tanyas27/weekly-tracker): Next.js 16 (App Router), React 19, Tailwind CSS v4, Neon PostgreSQL.

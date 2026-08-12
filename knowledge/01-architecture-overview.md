@@ -19,12 +19,12 @@ sources:
 generated:
   agent: Antigravity AI
   model: Gemini 3.6 Flash
-  timestamp: 2026-08-10T20:28:32+05:30
+  timestamp: 2026-08-11T21:58:00+05:30
 verified:
   by: daman
-  date: 2026-08-10
+  date: 2026-08-11
   status: verified
-stale_after: 2027-02-10
+stale_after: 2027-02-11
 status: active
 ---
 
@@ -32,7 +32,7 @@ status: active
 
 ## 1. Executive Summary
 
-**Weekly Tracker** is a client-side progressive web application (PWA) built with **Next.js 16.3.0**, **React 19.2.8**, and **Tailwind CSS v4**. It features an interactive, Studio Ghibli-themed weekly scheduler with glassmorphism UI cards, real-time time line indicators, task drag-and-drop/edit modals, dark/light theme switching, dynamic progress computation, and local storage persistence.
+**DailyForest** (formerly Weekly Tracker) is an SEO-optimized, progressive web application (PWA) built with **Next.js 16.3.0**, **React 19.2.8**, and **Tailwind CSS v4**. It features a server-rendered SEO landing page, structured Schema.org JSON-LD data, dynamic Open Graph images, AI discoverability via `llms.txt`, and an interactive Studio Ghibli-themed weekly scheduler with shareable multi-tenant calendar routing (`/c/[calendarId]`).
 
 ---
 
@@ -40,11 +40,12 @@ status: active
 
 | Layer | Technology | Version | Purpose |
 | :--- | :--- | :--- | :--- |
-| **Framework** | Next.js (App Router) | `16.3.0` | React framework, SSR/SSG, routing, & font optimization |
+| **Framework** | Next.js (App Router) | `16.3.0` | React framework, SSR/SSG, routing, metadata API & `next/og` |
 | **UI Library** | React / React DOM | `19.2.8` | Core component architecture and state management |
 | **Styling** | Tailwind CSS | `^4.0.0` | Utility-first styling via PostCSS v4 (`@import "tailwindcss"`) |
-| **Typography** | `next/font/google` | Built-in | Optimized font loader (`Caveat` handwritten font) |
+| **Typography** | `next/font/google` | Built-in | Optimized font loader (`Outfit`, `Nunito`, `Caveat` handwritten font) |
 | **Language** | TypeScript | `^5.0.0` | Type safety and interface contracts |
+| **SEO & Discoverability** | Schema.org JSON-LD | Custom | Rich snippets (`Organization`, `WebSite`, `WebApplication`, `Breadcrumbs`) |
 | **Offline / PWA** | Web Service Worker | Custom (`/sw.js`) | Offline shell caching and PWA installation |
 
 ---
@@ -54,35 +55,40 @@ status: active
 ```
 weekly-tracker/
 ├── app/
+│   ├── c/
+│   │   ├── [calendarId]/    # Calendar workspace routes
+│   │   │   ├── layout.tsx   # Calendar metadata & noindex rule
+│   │   │   ├── opengraph-image.tsx # Dynamic shared calendar OG image
+│   │   │   └── page.tsx     # Single-planner interactive scheduler client component
+│   │   └── new/
+│   │       └── page.tsx     # Calendar ID generator server component (redirects to /c/{id})
 │   ├── favicon.ico
 │   ├── globals.css         # Tailwind v4 import, theme CSS variables, dark mode settings
-│   ├── layout.tsx          # Root layout, Caveat font loader, metadata, RegisterSW component
-│   ├── page.tsx            # Primary single-page client component (Home component & scheduler logic)
+│   ├── layout.tsx          # Root layout, font loader, site-wide SEO metadataBase & defaults
+│   ├── opengraph-image.tsx # Root landing page OG image (1200x630)
+│   ├── twitter-image.tsx   # Twitter summary_large_image card
+│   ├── page.tsx            # Server-rendered DailyForest SEO landing page
+│   ├── robots.ts           # Crawl control rules (allows /, disallows /c/ & /api/)
+│   ├── sitemap.ts          # XML sitemap generator
 │   └── register-sw.tsx     # Client-side Service Worker registration component
+├── components/
+│   ├── JsonLd.tsx          # Schema.org structured data component
+│   └── ...                 # UI components
 ├── public/
-│   ├── bcg.avif             # Background texture/artwork image
-│   ├── totoro.jpeg          # Ghibli artwork decoration image
-│   ├── manifest.json        # PWA Web App Manifest configuration
-│   ├── sw.js                # Cache-first service worker implementation
-│   ├── icon.svg             # App SVG icon
-│   └── screenshot-*.png/svg # Mobile and desktop app screenshots for PWA installation
-├── .vscode/
-│   └── settings.json        # Workspace specific settings
-├── knowledge/               # Google OKF 0.2 Knowledge Base
-│   ├── index.md             # Master Knowledge Index
-│   └── ...                  # KI files
-├── AGENTS.md                # System & custom AI Agent Instructions
-├── package.json             # Dependencies and build scripts
-├── next.config.ts           # Next.js configuration
-└── tsconfig.json            # TypeScript compiler rules
+│   ├── llms.txt            # AI model discoverability documentation
+│   ├── manifest.json       # DailyForest PWA Web App Manifest
+│   ├── sw.js               # Cache-first service worker implementation
+│   └── ...                 # Artwork & screenshot assets
 ```
 
 ---
 
 ## 4. Architectural Patterns & Decisions
 
-### 4.1 Single-Page Architecture (`'use client'`)
-The core user interface resides in [app/page.tsx](../app/page.tsx). It operates as a `'use client'` component due to its heavy reliance on interactive state:
+### 4.1 Hybrid Server/Client Architecture
+- **Root Landing Page (`app/page.tsx`)**: Fully server-rendered for optimal LCP performance, indexing, and SEO meta tags.
+- **Calendar Workspace (`app/c/[calendarId]/page.tsx`)**: Interactive `'use client'` component operating with local state, SSE stream updates, and passcode protection.
+- **Generator Route (`app/c/new/page.tsx`)**: Server-side redirect producing cryptographically random nanoid calendar tokens.
 - Real-time minute interval tickers (`setInterval`).
 - Dynamic time-positioning algorithms (`getCurrentTimePosition`, `getTaskPosition`).
 - Overlap detection and offset calculation for tasks occurring simultaneously.

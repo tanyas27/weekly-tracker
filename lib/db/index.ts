@@ -44,13 +44,7 @@ function getSql() {
 
 export function sanitizeTaskName(name: string): string {
   if (!name) return '';
-  return name
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .trim();
+  return name.trim();
 }
 
 export async function getCalendar(calendarId: string): Promise<CalendarRow | null> {
