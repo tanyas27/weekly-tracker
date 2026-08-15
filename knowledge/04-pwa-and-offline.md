@@ -69,13 +69,14 @@ The service worker in [public/sw.js](../public/sw.js) handles offline shell cach
 
 ### 3.1 Cache Lifecycle Events
 
-1. **Install (`CACHE_NAME = 'weekly-tracker-v1'`):** Pre-caches the root document `/` and `/manifest.json`.
+1. **Install (`CACHE_NAME = 'dailyforest-v3'`):** Pre-caches the root document `/`, `/manifest.json`, and core branding assets.
 ```javascript
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => cache.addAll(urlsToCache))
   );
+  self.skipWaiting();
 });
 ```
 
