@@ -395,7 +395,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header & Date Selector Card */}
         <div
-          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-6 mb-3 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${
+          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:py-4 sm:px-6 mb-3 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${
             isDark
               ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
               : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.12)]'

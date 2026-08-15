@@ -277,7 +277,7 @@ export function Header({
                   : 'bg-rose-500'
               }`}
             />
-            <span className="max-w-[125px] sm:max-w-[170px] truncate">{calendarDisplayName}</span>
+            <span className="max-w-[100px] xs:max-w-[130px] sm:max-w-[170px] truncate">{calendarDisplayName}</span>
             <ChevronDown
               className={`w-3 h-3 opacity-60 transition-transform ${switcherOpen ? 'rotate-180' : ''}`}
             />
@@ -407,14 +407,14 @@ export function Header({
   )
 
   return (
-    <div className="flex flex-col gap-2.5 mb-3 sm:mb-5">
+    <div className="flex flex-col gap-2.5 mb-1 md:mb-0">
       {/* MOBILE COMPACT 2-ROW HEADER (< md) */}
-      <div className="flex flex-col gap-2.5 md:hidden">
-        {/* Mobile Row 1: Month Title, Switcher, Progress, Bell */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {/* Mobile Row 1: Month Title, Switcher, Bell */}
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <h1
-              className={`text-xl font-black font-sans tracking-tight shrink-0 ${
+              className={`text-lg sm:text-xl font-black font-sans tracking-tight shrink-0 ${
                 isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
               }`}
             >
@@ -423,37 +423,7 @@ export function Header({
             {renderPlannerSwitcher()}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Mobile Progress */}
-            <div className="flex items-center gap-1.5">
-              <div className="relative w-7 h-7 flex items-center justify-center">
-                <svg className="w-7 h-7 transform -rotate-90">
-                  <circle
-                    cx="14"
-                    cy="14"
-                    r="11"
-                    fill="none"
-                    stroke={isDark ? '#27272a' : '#e4e4e7'}
-                    strokeWidth="2.5"
-                  />
-                  <circle
-                    cx="14"
-                    cy="14"
-                    r="11"
-                    fill="none"
-                    stroke={isDark ? '#BDCC8D' : '#2D5F3E'}
-                    strokeWidth="2.5"
-                    strokeDasharray={`${(progressPercentage / 100) * 69.1} 69.1`}
-                    strokeLinecap="round"
-                    suppressHydrationWarning
-                  />
-                </svg>
-              </div>
-              <span className={`text-xs font-bold ${isDark ? 'text-zinc-200' : 'text-[#1a2e23]'}`}>
-                {roundedProgress}%
-              </span>
-            </div>
-
+          <div className="flex items-center gap-1.5 shrink-0">
             {/* Mobile Notification Bell */}
             <button
               type="button"
@@ -477,7 +447,9 @@ export function Header({
 
         {/* Mobile Row 2: Week Selector, Share, More (...) Button */}
         <div className="flex items-center justify-between gap-2">
-          {renderWeekSelector()}
+          <div className="min-w-0 flex-1">
+            {renderWeekSelector()}
+          </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
             {calendarId && (
@@ -514,24 +486,119 @@ export function Header({
         </div>
       </div>
 
-      {/* DESKTOP SINGLE-ROW HEADER (>= md) */}
-      <div className="hidden md:flex md:items-center md:justify-between gap-4">
-        {/* Left Cluster: Month Title, Planner Switcher, Week Selector */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1
-            className={`text-2xl lg:text-3xl font-black font-sans tracking-tight whitespace-nowrap ${
-              isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
-            }`}
-          >
-            {monthYear}
-          </h1>
+      {/* TABLET & DESKTOP HEADER (>= md) */}
+      <div className="hidden md:flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+        {/* Row 1 for Tablet (768px-1199px) / Left side on Wide Desktop (>= 1200px) */}
+        <div className="flex items-center justify-between xl:justify-start gap-3 flex-wrap xl:flex-nowrap">
+          <div className="flex items-center gap-3">
+            <h1
+              className={`text-2xl lg:text-3xl font-black font-sans tracking-tight whitespace-nowrap ${
+                isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
+              }`}
+            >
+              {monthYear}
+            </h1>
+            {renderPlannerSwitcher()}
+          </div>
 
-          {renderPlannerSwitcher()}
-          {renderWeekSelector()}
+          {/* On wide screens, Week Selector sits right next to planner switcher */}
+          <div className="hidden xl:block">
+            {renderWeekSelector()}
+          </div>
+
+          {/* On tablet/1024px (hidden on xl), Right Action buttons sit on Row 1 */}
+          <div className="flex xl:hidden items-center gap-2">
+            {/* Progress Ring */}
+            <div className="flex items-center gap-1.5 px-1 shrink-0">
+              <div className="relative w-7 h-7 flex items-center justify-center">
+                <svg className="w-7 h-7 transform -rotate-90">
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke={isDark ? '#27272a' : '#e4e4e7'}
+                    strokeWidth="2.5"
+                  />
+                  <circle
+                    cx="14"
+                    cy="14"
+                    r="11"
+                    fill="none"
+                    stroke={isDark ? '#BDCC8D' : '#2D5F3E'}
+                    strokeWidth="2.5"
+                    strokeDasharray={`${(progressPercentage / 100) * 69.1} 69.1`}
+                    strokeLinecap="round"
+                    suppressHydrationWarning
+                  />
+                </svg>
+              </div>
+              <span className={`text-xs font-bold ${isDark ? 'text-zinc-200' : 'text-[#1a2e23]'}`}>
+                {roundedProgress}%
+              </span>
+            </div>
+
+            {/* Share */}
+            {calendarId && (
+              <button
+                type="button"
+                onClick={handleShare}
+                className={`inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border shadow-xs transition-all active:scale-95 whitespace-nowrap cursor-pointer ${
+                  copied
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : isDark
+                    ? 'bg-[#38BDF8] text-zinc-950 border-[#38BDF8] hover:bg-[#7DD3FC]'
+                    : 'bg-[#0284C7] text-white border-[#0284C7] hover:bg-[#0369A1]'
+                }`}
+              >
+                <Share2 className="w-3.5 h-3.5 shrink-0" />
+                <span>{copied ? 'Copied!' : 'Share'}</span>
+              </button>
+            )}
+
+            {/* New */}
+            <button
+              type="button"
+              onClick={handleNewCalendar}
+              className={`inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs transition-all active:scale-95 whitespace-nowrap cursor-pointer ${
+                isDark
+                  ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60'
+                  : 'bg-emerald-50 text-emerald-900 border-emerald-300/80 hover:bg-emerald-100'
+              }`}
+              title="Create New Planner"
+            >
+              <PlusCircle className="w-3.5 h-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span>New</span>
+            </button>
+
+            {/* Bell */}
+            <button
+              type="button"
+              onClick={onOpenNotifications}
+              aria-label="Open notifications drawer"
+              className={`relative w-8 h-8 flex items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
+                isDark
+                  ? 'bg-zinc-800/80 border-white/10 text-zinc-300 hover:bg-zinc-700'
+                  : 'bg-emerald-50/80 border-emerald-200/80 text-emerald-900 hover:bg-emerald-100'
+              }`}
+            >
+              <Bell className="w-4 h-4 text-emerald-700 dark:text-zinc-300" />
+              {unreadNotificationsCount > 0 && (
+                <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full animate-pulse shadow-xs">
+                  {unreadNotificationsCount > 9 ? '9+' : unreadNotificationsCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Right Cluster: Active Hours, Privacy, Progress, Share & Actions */}
-        <div className="flex items-center justify-end gap-2.5 flex-nowrap">
+        {/* Row 2 for Tablet (768px-1199px) / Right Cluster on Wide Desktop (>= 1200px) */}
+        <div className="flex items-center justify-between xl:justify-end gap-2.5 flex-nowrap">
+          {/* On tablet, Week Selector sits on the left of Row 2 */}
+          <div className="block xl:hidden">
+            {renderWeekSelector()}
+          </div>
+
           {/* Quick Settings Group: Active Hours & Privacy */}
           <div className="flex items-center gap-1.5 shrink-0">
             {onOpenActiveHours && (
@@ -582,41 +649,41 @@ export function Header({
             )}
           </div>
 
-          {/* Desktop Progress Ring */}
-          <div className="flex items-center gap-2 px-1 shrink-0">
-            <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center">
-              <svg className="w-8 h-8 sm:w-9 sm:h-9 transform -rotate-90">
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke={isDark ? '#27272a' : '#e4e4e7'}
-                  strokeWidth="3"
-                />
-                <circle
-                  cx="18"
-                  cy="18"
-                  r="14"
-                  fill="none"
-                  stroke={isDark ? '#BDCC8D' : '#2D5F3E'}
-                  strokeWidth="3"
-                  strokeDasharray={strokeDashArray}
-                  strokeLinecap="round"
-                  suppressHydrationWarning
-                />
-              </svg>
+          {/* On wide screens (xl:), Progress, Share, New, Bell appear on the right */}
+          <div className="hidden xl:flex items-center gap-2.5 shrink-0">
+            {/* Desktop Progress Ring */}
+            <div className="flex items-center gap-2 px-1 shrink-0">
+              <div className="relative w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center">
+                <svg className="w-8 h-8 sm:w-9 sm:h-9 transform -rotate-90">
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="14"
+                    fill="none"
+                    stroke={isDark ? '#27272a' : '#e4e4e7'}
+                    strokeWidth="3"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="14"
+                    fill="none"
+                    stroke={isDark ? '#BDCC8D' : '#2D5F3E'}
+                    strokeWidth="3"
+                    strokeDasharray={strokeDashArray}
+                    strokeLinecap="round"
+                    suppressHydrationWarning
+                  />
+                </svg>
+              </div>
+              <div className="text-xs font-bold leading-tight">
+                <span className={`block text-[9px] font-bold tracking-wider uppercase ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  DONE
+                </span>
+                <span className={isDark ? 'text-zinc-100' : 'text-[#1a2e23]'}>{roundedProgress}%</span>
+              </div>
             </div>
-            <div className="text-xs font-bold leading-tight">
-              <span className={`block text-[9px] font-bold tracking-wider uppercase ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                DONE
-              </span>
-              <span className={isDark ? 'text-zinc-100' : 'text-[#1a2e23]'}>{roundedProgress}%</span>
-            </div>
-          </div>
 
-          {/* Action Buttons: Share & New & Bell */}
-          <div className="flex items-center gap-2 shrink-0">
             {calendarId && (
               <button
                 type="button"
@@ -744,6 +811,48 @@ export function Header({
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* Weekly Progress Card in Drawer */}
+            <div
+              className={`p-3.5 rounded-2xl flex items-center justify-between border mb-3 ${
+                isDark ? 'bg-zinc-800/60 border-white/10' : 'bg-emerald-50/60 border-emerald-100'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="relative w-9 h-9 flex items-center justify-center">
+                  <svg className="w-9 h-9 transform -rotate-90">
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      fill="none"
+                      stroke={isDark ? '#27272a' : '#e4e4e7'}
+                      strokeWidth="3"
+                    />
+                    <circle
+                      cx="18"
+                      cy="18"
+                      r="14"
+                      fill="none"
+                      stroke={isDark ? '#BDCC8D' : '#2D5F3E'}
+                      strokeWidth="3"
+                      strokeDasharray={strokeDashArray}
+                      strokeLinecap="round"
+                      suppressHydrationWarning
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <div className="text-xs font-bold">Week Progress</div>
+                  <div className="text-[11px] opacity-70">{roundedProgress}% Tasks Completed</div>
+                </div>
+              </div>
+              <span className={`text-xs font-black px-2.5 py-1 rounded-full ${
+                isDark ? 'bg-[#BDCC8D] text-zinc-950' : 'bg-[#2D5F3E] text-white'
+              }`}>
+                {roundedProgress}%
+              </span>
             </div>
 
             {/* Action Items List */}
