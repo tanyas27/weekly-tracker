@@ -10,6 +10,9 @@ import {
   formatHourLabel,
   formatHourRangeLabel,
   DEFAULT_ACTIVE_HOURS,
+  normalizeToMonday,
+  getAdjacentWeeks,
+  getWeekTag,
 } from '../time-utils'
 
 describe('timeStringToDecimalHours', () => {
@@ -93,11 +96,58 @@ describe('TIME_SLOTS', () => {
   })
 })
 
+describe('normalizeToMonday', () => {
+  it('normalizes any mid-week date string to the Monday of that week', () => {
+    // 2026-08-06 is Thursday -> Monday is 2026-08-03
+    expect(normalizeToMonday('2026-08-06')).toBe('2026-08-03')
+    // 2026-08-07 is Friday -> Monday is 2026-08-03
+    expect(normalizeToMonday('2026-08-07')).toBe('2026-08-03')
+    // 2026-08-09 is Sunday -> Monday is 2026-08-03
+    expect(normalizeToMonday('2026-08-09')).toBe('2026-08-03')
+    // 2026-08-10 is Monday -> Monday is 2026-08-10
+    expect(normalizeToMonday('2026-08-10')).toBe('2026-08-10')
+    // 2026-08-15 is Saturday -> Monday is 2026-08-10
+    expect(normalizeToMonday('2026-08-15')).toBe('2026-08-10')
+  })
+})
+
+describe('getAdjacentWeeks', () => {
+  it('generates a range of past and upcoming week Mondays', () => {
+    const weeks = getAdjacentWeeks('2026-08-10', 1, 2)
+    // 1 past week (Aug 3), current week (Aug 10), 2 future weeks (Aug 17, Aug 24)
+    expect(weeks).toEqual([
+      '2026-08-03',
+      '2026-08-10',
+      '2026-08-17',
+      '2026-08-24',
+    ])
+  })
+})
+
+describe('getWeekTag', () => {
+  it('identifies Current, Next Week, In 2 Weeks, and Last Week', () => {
+    const current = '2026-08-10'
+    expect(getWeekTag('2026-08-10', current)).toBe(' (Current)')
+    expect(getWeekTag('2026-08-17', current)).toBe(' (Next Week)')
+    expect(getWeekTag('2026-08-24', current)).toBe(' (In 2 Weeks)')
+    expect(getWeekTag('2026-08-03', current)).toBe(' (Last Week)')
+  })
+})
+
 describe('getWeekDays', () => {
   it('returns 7 days starting on Monday, with exactly one marked as today', () => {
     const days = getWeekDays()
     expect(days).toHaveLength(7)
     expect(days[0].short).toBe('MON')
     expect(days.filter((d) => d.isToday)).toHaveLength(1)
+  })
+
+  it('correctly anchors to Monday even when passed an arbitrary mid-week date', () => {
+    const days = getWeekDays('2026-08-06') // Thursday
+    expect(days).toHaveLength(7)
+    expect(days[0].short).toBe('MON')
+    expect(days[0].date).toBe(3) // Monday Aug 3
+    expect(days[6].short).toBe('SUN')
+    expect(days[6].date).toBe(9) // Sunday Aug 9
   })
 })

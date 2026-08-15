@@ -9,6 +9,7 @@ import {
 } from '@/lib/db';
 import { verifyPasscode } from '@/lib/crypto-utils';
 import { broadcastCalendarUpdate } from '@/lib/db/events';
+import { normalizeToMonday } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -47,14 +48,7 @@ export async function POST(
     const body = await request.json();
     const { action, weekStartDate, task, taskId, sourceSessionId } = body;
 
-    const today = new Date();
-    const currentDay = today.getDay();
-    const diff = currentDay === 0 ? -6 : 1 - currentDay;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diff);
-    const defaultMondayStr = monday.toISOString().split('T')[0];
-
-    const targetWeek = weekStartDate || defaultMondayStr;
+    const targetWeek = normalizeToMonday(weekStartDate);
     const session = await getOrCreateSession(calendarId, targetWeek);
 
     if (!session) {

@@ -82,6 +82,24 @@ export async function createCalendar(calendarId: string, title: string = 'My Wee
   }
 }
 
+export async function getSession(calendarId: string, weekStartDate: string): Promise<SessionRow | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const rows = await sql`
+      SELECT id, calendar_id, week_start_date, created_at
+      FROM sessions
+      WHERE calendar_id = ${calendarId} AND week_start_date = ${weekStartDate}::date
+      LIMIT 1
+    `;
+    if (!rows || rows.length === 0) return null;
+    return rows[0] as SessionRow;
+  } catch (error) {
+    console.error('Database getSession error:', error);
+    return null;
+  }
+}
+
 export async function getOrCreateSession(calendarId: string, weekStartDate: string): Promise<SessionRow | null> {
   const sql = getSql();
   if (!sql) return null;
@@ -105,10 +123,11 @@ export async function getCalendarSessions(calendarId: string): Promise<SessionRo
   if (!sql) return [];
   try {
     const rows = await sql`
-      SELECT id, calendar_id, week_start_date, created_at
-      FROM sessions
-      WHERE calendar_id = ${calendarId}
-      ORDER BY week_start_date DESC
+      SELECT s.id, s.calendar_id, s.week_start_date, s.created_at
+      FROM sessions s
+      WHERE s.calendar_id = ${calendarId}
+        AND EXISTS (SELECT 1 FROM tasks t WHERE t.session_id = s.id)
+      ORDER BY s.week_start_date DESC
     `;
     return (rows as SessionRow[]) || [];
   } catch (error) {

@@ -138,28 +138,42 @@ export function getCurrentTimePosition(
 }
 
 /**
+ * Normalizes any date string or Date object to the Monday (YYYY-MM-DD) of that week.
+ */
+export function normalizeToMonday(dateInput?: string | Date): string {
+  let date: Date
+  if (typeof dateInput === 'string' && dateInput.trim()) {
+    const cleanStr = dateInput.split('T')[0]
+    const parts = cleanStr.split('-').map(Number)
+    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      date = new Date(parts[0], parts[1] - 1, parts[2])
+    } else {
+      date = new Date()
+    }
+  } else if (dateInput instanceof Date && !isNaN(dateInput.getTime())) {
+    date = new Date(dateInput)
+  } else {
+    date = new Date()
+  }
+
+  const currentDay = date.getDay() // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const diff = currentDay === 0 ? -6 : 1 - currentDay
+  date.setDate(date.getDate() + diff)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
  * Returns 7 DayInfo objects starting from Monday of the current week (or specified week start date).
  */
 export function getWeekDays(startWeekDate?: string): DayInfo[] {
   const today = new Date()
-  let monday: Date
-
-  if (startWeekDate) {
-    const parts = startWeekDate.split('-').map(Number)
-    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-      monday = new Date(parts[0], parts[1] - 1, parts[2])
-    } else {
-      const currentDay = today.getDay()
-      const diff = currentDay === 0 ? -6 : 1 - currentDay
-      monday = new Date(today)
-      monday.setDate(today.getDate() + diff)
-    }
-  } else {
-    const currentDay = today.getDay()
-    const diff = currentDay === 0 ? -6 : 1 - currentDay
-    monday = new Date(today)
-    monday.setDate(today.getDate() + diff)
-  }
+  const mondayStr = normalizeToMonday(startWeekDate)
+  const [y, m, d] = mondayStr.split('-').map(Number)
+  const monday = new Date(y, m - 1, d)
 
   const days: DayInfo[] = []
   const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
@@ -174,7 +188,7 @@ export function getWeekDays(startWeekDate?: string): DayInfo[] {
       short: dayNames[dayIndex],
       date: date.getDate(),
       fullDate: date,
-      isToday
+      isToday,
     })
   }
 
@@ -183,14 +197,48 @@ export function getWeekDays(startWeekDate?: string): DayInfo[] {
 
 export function getCurrentMonthYear(startWeekDate?: string): string {
   if (startWeekDate) {
-    const parts = startWeekDate.split('-').map(Number)
-    if (parts.length >= 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-      const date = new Date(parts[0], parts[1] - 1, parts[2])
-      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-    }
+    const mondayStr = normalizeToMonday(startWeekDate)
+    const [y, m, d] = mondayStr.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
+    return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   }
   const now = new Date()
   return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+}
+
+/**
+ * Returns a list of normalized Monday dates spanning adjacent past and upcoming weeks.
+ */
+export function getAdjacentWeeks(baseMondayInput?: string | Date, pastCount = 2, futureCount = 3): string[] {
+  const baseMondayStr = normalizeToMonday(baseMondayInput)
+  const [y, m, d] = baseMondayStr.split('-').map(Number)
+  const baseDate = new Date(y, m - 1, d)
+
+  const weeks: string[] = []
+  for (let i = -pastCount; i <= futureCount; i++) {
+    const target = new Date(baseDate)
+    target.setDate(baseDate.getDate() + i * 7)
+    weeks.push(normalizeToMonday(target))
+  }
+  return weeks
+}
+
+/**
+ * Returns a descriptive tag comparing a target week Monday to the current week Monday.
+ */
+export function getWeekTag(mondayDate: string, currentMondayDate: string): string {
+  const [y1, m1, d1] = normalizeToMonday(mondayDate).split('-').map(Number)
+  const [y2, m2, d2] = normalizeToMonday(currentMondayDate).split('-').map(Number)
+  const date1 = new Date(y1, m1 - 1, d1)
+  const date2 = new Date(y2, m2 - 1, d2)
+  const diffDays = Math.round((date1.getTime() - date2.getTime()) / (1000 * 60 * 60 * 24))
+
+  if (diffDays === 0) return ' (Current)'
+  if (diffDays === 7) return ' (Next Week)'
+  if (diffDays === 14) return ' (In 2 Weeks)'
+  if (diffDays === 21) return ' (In 3 Weeks)'
+  if (diffDays === -7) return ' (Last Week)'
+  return ''
 }
 
 export function getTimezone(): string {

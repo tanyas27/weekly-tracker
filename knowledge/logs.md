@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-08-15 - Lazy Session Creation & Monday-Normalized Week Navigation
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Streamlined header UI layout to eliminate visual clutter on desktop and mobile. Implemented strict Monday normalization (`normalizeToMonday`) across `time-utils.ts`, `Header.tsx`, and backend calendar routes (`/api/calendars/[calendarId]`, `/api/calendars/[calendarId]/tasks`) to eliminate arbitrary mid-week date drift. Implemented lazy session creation pattern (`getSession`) so browsing past or upcoming weeks is completely read-only and never writes empty ghost records to the database. Updated `getCalendarSessions` to only persist sessions with existing tasks, while allowing ephemeral client-side browsing and multi-week forward planning in the dropdown (`getAdjacentWeeks`). Updated unit tests in `lib/__tests__/time-utils.test.ts` and documentation in `knowledge/02-data-models-and-state.md`.
+
 ### 2026-08-15 - Active Hours Timeline Preference & Empty Row Filtering
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
 - **Verifier:** daman

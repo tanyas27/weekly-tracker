@@ -164,3 +164,16 @@ flowchart TD
     G --> H["useEffect Syncs to localStorage ('weeklyTasks')"]
     H --> I["UI Re-renders Grid & Re-calculates Progress Percentage"]
 ```
+
+## 6. Session Lifecycle & Lazy Database Creation
+
+To prevent database clutter and ensure idempotent read operations:
+1. **Read Operations (`GET /api/calendars/[calendarId]`)**:
+   - `getSession` performs a read-only query.
+   - If the week has never had tasks added, `activeSession` returns `null` and `tasks` returns `[]`. No row is written to the database on page visit.
+2. **Write Mutations (`POST /api/calendars/[calendarId]/tasks`)**:
+   - `getOrCreateSession` is lazily invoked only when a task is created, updated, or imported into that week.
+3. **Session Querying (`getCalendarSessions`)**:
+   - Queries `sessions` filtered by `EXISTS (SELECT 1 FROM tasks WHERE tasks.session_id = sessions.id)`. Empty viewed weeks never permanently pollute the dropdown.
+4. **Monday Normalization (`normalizeToMonday`)**:
+   - All session dates snap strictly to Monday (`YYYY-MM-DD`). Mid-week date drift is eliminated.
