@@ -1,8 +1,8 @@
-const CACHE_NAME = 'dailyforest-v2';
+const CACHE_NAME = 'dailyforest-v3';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/bcg.avif',
+  '/bcg.jpg',
   '/totoro.png',
   '/favicon.ico',
   '/icon-192.png',

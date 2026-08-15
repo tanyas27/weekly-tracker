@@ -10,20 +10,25 @@ export default function RegisterSW() {
         navigator.serviceWorker.getRegistrations().then((registrations) => {
           for (const registration of registrations) {
             registration.unregister()
-            console.log('SW unregistered in development mode')
           }
         })
       } else {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker
-            .register('/sw.js')
-            .then((registration) => {
-              console.log('SW registered: ', registration)
-            })
-            .catch((error) => {
-              console.log('SW registration failed: ', error)
-            })
-        })
+        const registerAndCheck = async () => {
+          try {
+            const registration = await navigator.serviceWorker.register('/sw.js')
+            // Proactively check for byte updates to sw.js on PWA launch
+            registration.update()
+          } catch (error) {
+            console.error('SW registration failed: ', error)
+          }
+        }
+
+        if (document.readyState === 'complete') {
+          registerAndCheck()
+        } else {
+          window.addEventListener('load', registerAndCheck)
+          return () => window.removeEventListener('load', registerAndCheck)
+        }
       }
     }
   }, [])
