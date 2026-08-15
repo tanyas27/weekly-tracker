@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   getCalendar,
-  getOrCreateSession,
+  getSession,
   getCalendarSessions,
   getTasksForSession,
 } from '@/lib/db';
 import { verifyPasscode } from '@/lib/crypto-utils';
+import { normalizeToMonday } from '@/lib/time-utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,15 +25,7 @@ export async function GET(
     const { calendarId } = await params;
     const { searchParams } = new URL(request.url);
 
-    // Get current Monday default
-    const today = new Date();
-    const currentDay = today.getDay();
-    const diff = currentDay === 0 ? -6 : 1 - currentDay;
-    const monday = new Date(today);
-    monday.setDate(today.getDate() + diff);
-    const defaultMondayStr = monday.toISOString().split('T')[0];
-
-    const weekStartDate = searchParams.get('week') || defaultMondayStr;
+    const weekStartDate = normalizeToMonday(searchParams.get('week') || undefined);
 
     const calendar = await getCalendar(calendarId);
 
@@ -69,7 +62,7 @@ export async function GET(
       }
     }
 
-    const activeSession = await getOrCreateSession(calendarId, weekStartDate);
+    const activeSession = await getSession(calendarId, weekStartDate);
     const sessions = await getCalendarSessions(calendarId);
     const rawTasks = activeSession ? await getTasksForSession(activeSession.id) : [];
 

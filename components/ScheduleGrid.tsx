@@ -1,7 +1,13 @@
-import React from 'react'
-import { DayInfo, TIME_SLOTS, getCurrentTimePosition } from '@/lib/time-utils'
+import React, { useMemo } from 'react'
+import {
+  DayInfo,
+  ActiveHoursPreference,
+  DEFAULT_ACTIVE_HOURS,
+  getTimeSlotsForRange,
+  getCurrentTimePosition,
+} from '@/lib/time-utils'
 import { computeTaskOverlapLayout } from '@/lib/task-overlap'
-import { START_HOUR, SLOT_HEIGHT_PX } from '@/lib/constants'
+import { SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/types/task'
 import { TaskCard } from './TaskCard'
 
@@ -11,6 +17,7 @@ interface ScheduleGridProps {
   tasksByDay: Record<string, Task[]>
   currentTimeHour: number
   isDark: boolean
+  activeHours?: ActiveHoursPreference
   onOpenAddModal: (day: string, timeSlotIndex: number) => void
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
@@ -23,6 +30,8 @@ interface DayColumnProps {
   currentTimeHour: number
   isDark: boolean
   minWidthClassName: string
+  startHour: number
+  visibleSlotCount: number
   onOpenAddModal: (day: string, timeSlotIndex: number) => void
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
@@ -36,6 +45,8 @@ const DayColumn = React.memo(function DayColumn({
   currentTimeHour,
   isDark,
   minWidthClassName,
+  startHour,
+  visibleSlotCount,
   onOpenAddModal,
   onOpenEditModal,
   onToggleComplete,
@@ -54,10 +65,10 @@ const DayColumn = React.memo(function DayColumn({
             ? 'border-white/[0.06]'
             : 'border-white/30'
       }`}
-      style={{ height: TIME_SLOTS.length * SLOT_HEIGHT_PX }}
+      style={{ height: visibleSlotCount * SLOT_HEIGHT_PX }}
     >
-      {TIME_SLOTS.map((_, idx) => {
-        const timeHour = START_HOUR + idx
+      {Array.from({ length: visibleSlotCount }).map((_, idx) => {
+        const timeHour = startHour + idx
         const isCurrentHour = day.isToday && currentTimeHour >= timeHour && currentTimeHour < timeHour + 1
         const isDragOver = dragOverInfo?.slotIndex === idx
         return (
@@ -127,6 +138,7 @@ const DayColumn = React.memo(function DayColumn({
             task={task}
             dayShort={day.short}
             overlapLayout={overlapLayout}
+            baselineStartHour={startHour}
             onToggleComplete={onToggleComplete}
             onOpenEditModal={onOpenEditModal}
           />
@@ -142,16 +154,41 @@ export function ScheduleGrid({
   tasksByDay,
   currentTimeHour,
   isDark,
+  activeHours,
   onOpenAddModal,
   onOpenEditModal,
   onToggleComplete,
   onMoveTask,
 }: ScheduleGridProps) {
-  const currentTimeTop = getCurrentTimePosition(currentTimeHour)
+  const allTasks = useMemo(() => Object.values(tasksByDay).flat(), [tasksByDay])
+  const baseStart = activeHours?.startHour ?? DEFAULT_ACTIVE_HOURS.startHour
+  const baseEnd = activeHours?.endHour ?? DEFAULT_ACTIVE_HOURS.endHour
+
+  // Auto-expand timeline bounds if any scheduled task extends beyond active hours
+  const { effectiveStartHour, effectiveEndHour } = useMemo(() => {
+    let minH = baseStart
+    let maxH = baseEnd
+    for (const t of allTasks) {
+      minH = Math.min(minH, Math.floor(t.startHour))
+      maxH = Math.max(maxH, Math.ceil(t.startHour + t.duration))
+    }
+    return {
+      effectiveStartHour: Math.max(0, minH),
+      effectiveEndHour: Math.min(24, Math.max(minH + 1, maxH)),
+    }
+  }, [allTasks, baseStart, baseEnd])
+
+  const visibleTimeSlots = useMemo(
+    () => getTimeSlotsForRange(effectiveStartHour, effectiveEndHour),
+    [effectiveStartHour, effectiveEndHour]
+  )
+
+  const currentTimeTop = getCurrentTimePosition(currentTimeHour, effectiveStartHour, effectiveEndHour)
   const timeGutterCls = 'w-16 sm:w-20 md:w-24 flex-shrink-0'
 
   return (
     <div
+      id="schedule-grid-container"
       className={`rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative z-30 transition-colors border backdrop-blur-xl ${
         isDark
           ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
@@ -164,7 +201,7 @@ export function ScheduleGrid({
         <div className={`${timeGutterCls} border-r transition-colors ${
           isDark ? 'border-white/[0.08] bg-zinc-900/40' : 'border-white/40 bg-white/30'
         }`}>
-          {TIME_SLOTS.map((time) => (
+          {visibleTimeSlots.map((time) => (
             <div
               key={time}
               className={`h-20 flex items-start justify-end pr-2 sm:pr-3 md:pr-4 pt-1.5 text-[10px] sm:text-[11px] font-semibold tracking-tight ${
@@ -199,6 +236,8 @@ export function ScheduleGrid({
                 currentTimeHour={currentTimeHour}
                 isDark={isDark}
                 minWidthClassName="min-w-[240px]"
+                startHour={effectiveStartHour}
+                visibleSlotCount={visibleTimeSlots.length}
                 onOpenAddModal={onOpenAddModal}
                 onOpenEditModal={onOpenEditModal}
                 onToggleComplete={onToggleComplete}
@@ -217,6 +256,8 @@ export function ScheduleGrid({
                 currentTimeHour={currentTimeHour}
                 isDark={isDark}
                 minWidthClassName="min-w-[140px]"
+                startHour={effectiveStartHour}
+                visibleSlotCount={visibleTimeSlots.length}
                 onOpenAddModal={onOpenAddModal}
                 onOpenEditModal={onOpenEditModal}
                 onToggleComplete={onToggleComplete}

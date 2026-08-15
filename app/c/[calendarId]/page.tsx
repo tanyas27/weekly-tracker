@@ -2,15 +2,20 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState, useEffect, useMemo, use } from 'react'
+import { useState, useEffect, useMemo, useRef, use } from 'react'
 import { Sun, Moon } from 'lucide-react'
 import { LogoBadge } from '@/components/LogoBadge'
 import {
   getWeekDays,
   getCurrentMonthYear,
   COLORS,
-  TOTORO_IMAGE_SRC
+  TOTORO_IMAGE_SRC,
+  ActiveHoursPreference,
+  DEFAULT_ACTIVE_HOURS,
+  getStoredActiveHours,
+  saveStoredActiveHours,
 } from '@/lib/time-utils'
+import { START_HOUR, SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/lib/task-overlap'
 import { useCurrentTime } from '@/hooks/useCurrentTime'
 import { useTasks, TaskModalFormData } from '@/hooks/useTasks'
@@ -20,6 +25,7 @@ import { Header } from '@/components/Header'
 import { DaySelector } from '@/components/DaySelector'
 import { ScheduleGrid } from '@/components/ScheduleGrid'
 import { TaskModal } from '@/components/TaskModal'
+import { ActiveHoursModal } from '@/components/ActiveHoursModal'
 import { PrivacyLockScreen } from '@/components/PrivacyLockScreen'
 import { PrivacySettingsModal } from '@/components/PrivacySettingsModal'
 import ToastContainer from '@/components/ToastContainer'
@@ -88,6 +94,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     drawerOpen,
     unreadCount,
     permissionStatus,
+    isPushSubscribed,
+    isSendingTest,
     setDrawerOpen,
     dismissToast,
     markAsRead,
@@ -95,6 +103,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     clearAllNotifications,
     updateSettings,
     requestNativePermission,
+    sendTestNotification,
     notifyTaskCompleted,
   } = useNotifications(tasks, calendarId)
 
@@ -103,6 +112,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
   })
   const [isDark, setIsDark] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [activeHours, setActiveHours] = useState<ActiveHoursPreference>(DEFAULT_ACTIVE_HOURS)
+  const [showActiveHoursModal, setShowActiveHoursModal] = useState(false)
 
   const [showModal, setShowModal] = useState(false)
   const [modalData, setModalData] = useState<TaskModalFormData>({
@@ -116,17 +127,40 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
   })
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setActiveHours(getStoredActiveHours())
+    }
+  }, [])
+
+  const handleSaveActiveHours = (newPref: ActiveHoursPreference) => {
+    setActiveHours(newPref)
+    saveStoredActiveHours(newPref)
+  }
+
+  const effectiveStartHour = useMemo(() => {
+    let minH = activeHours.startHour
+    for (const t of tasks) {
+      minH = Math.min(minH, Math.floor(t.startHour))
+    }
+    return Math.max(0, minH)
+  }, [tasks, activeHours.startHour])
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined') {
         setIsDark(localStorage.getItem('theme') === 'dark')
         setIsMounted(true)
         if (calendarId) {
-          recordRecentCalendar(calendarId, 'My Planner', isPrivate)
+          recordRecentCalendar(calendarId, 'My Planner', isPrivate, {
+            taskCount: tasks.length,
+            completedCount: tasks.filter((t) => t.completed).length,
+            lastActiveWeek: selectedWeek,
+          })
         }
       }
     }, 0)
     return () => clearTimeout(timer)
-  }, [calendarId, isPrivate])
+  }, [calendarId, isPrivate, tasks.length, selectedWeek])
 
   useEffect(() => {
     if (isMounted && typeof window !== 'undefined') {
@@ -138,6 +172,31 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       }
     }
   }, [isDark, isMounted])
+
+  const hasAutoScrolledRef = useRef(false)
+
+  // Smoothly scroll to the active hour when calendar is loaded
+  useEffect(() => {
+    if (isLoaded && !hasAutoScrolledRef.current && typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        const currentHour = currentTime.hour // e.g. 14.5
+        const gridElement = document.getElementById('schedule-grid-container')
+        if (gridElement) {
+          const rect = gridElement.getBoundingClientRect()
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+          // Offset by ~1.5 hours before current time so user sees current & context
+          const hourOffsetPx = Math.max(0, currentHour - 1.5) * SLOT_HEIGHT_PX
+          const targetScroll = Math.max(0, rect.top + scrollTop + hourOffsetPx - 100)
+          window.scrollTo({
+            top: targetScroll,
+            behavior: 'smooth',
+          })
+          hasAutoScrolledRef.current = true
+        }
+      }, 250)
+      return () => clearTimeout(timer)
+    }
+  }, [isLoaded, currentTime.hour])
 
   const handleToggleComplete = (taskId: string, day: string, e: React.MouseEvent) => {
     const targetTask = tasks.find((t) => t.id === taskId)
@@ -185,7 +244,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
   }
 
   const openAddModal = (day: string, timeSlotIndex: number) => {
-    const hour = 7 + timeSlotIndex
+    const hour = effectiveStartHour + timeSlotIndex
     const startTime = `${hour.toString().padStart(2, '0')}:00`
     const colorIndex = (day.charCodeAt(0) + day.charCodeAt(day.length - 1) + hour) % COLORS.length
     setModalData({
@@ -319,11 +378,14 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         settings={settings}
         permissionStatus={permissionStatus}
         isDark={isDark}
+        isPushSubscribed={isPushSubscribed}
+        isSendingTest={isSendingTest}
         onUpdateSettings={updateSettings}
         onMarkAsRead={markAsRead}
         onMarkAllAsRead={markAllAsRead}
         onClearAll={clearAllNotifications}
         onRequestNativePermission={requestNativePermission}
+        onSendTestNotification={sendTestNotification}
       />
 
       <div className="max-w-7xl mx-auto relative z-10">
@@ -352,6 +414,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
             isPrivate={isPrivate || serverPrivacyState.isPrivate}
             onOpenPrivacySettings={() => setShowPrivacyModal(true)}
             onLockCalendar={lockCalendar}
+            activeHours={activeHours}
+            onOpenActiveHours={() => setShowActiveHoursModal(true)}
           />
 
           {isLoaded && !((isPrivate || serverPrivacyState.isPrivate) && (isLocked && serverPrivacyState.isLocked)) && (
@@ -418,13 +482,14 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
               tasksByDay={tasksByDay}
               currentTimeHour={currentTime.hour}
               isDark={isDark}
+              activeHours={activeHours}
               onOpenAddModal={openAddModal}
               onOpenEditModal={openEditModal}
               onToggleComplete={handleToggleComplete}
               onMoveTask={(taskId, fromDay, toDay, slotIndex) => {
                 const task = tasks.find((t) => t.id === taskId)
                 if (!task) return
-                const newHour = 7 + slotIndex
+                const newHour = effectiveStartHour + slotIndex
                 const newStartTime = `${newHour.toString().padStart(2, '0')}:00`
                 const updatedDays = task.days.includes(fromDay)
                   ? task.days.map((d) => (d === fromDay ? toDay : d))
@@ -446,6 +511,14 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
             />
           </>
         )}
+
+        <ActiveHoursModal
+          isOpen={showActiveHoursModal}
+          isDark={isDark}
+          currentPreference={activeHours}
+          onClose={() => setShowActiveHoursModal(false)}
+          onSave={handleSaveActiveHours}
+        />
 
         <PrivacySettingsModal
           isOpen={showPrivacyModal}

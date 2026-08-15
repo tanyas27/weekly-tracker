@@ -36,3 +36,15 @@ CREATE INDEX IF NOT EXISTS idx_sessions_calendar_id ON sessions(calendar_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_session_id ON tasks(session_id);
 CREATE INDEX IF NOT EXISTS idx_tasks_calendar_id ON tasks(calendar_id);
 CREATE INDEX IF NOT EXISTS idx_calendars_last_accessed ON calendars(last_accessed_at);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id VARCHAR(64) PRIMARY KEY,
+  calendar_id VARCHAR(64) REFERENCES calendars(id) ON DELETE CASCADE,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subs_calendar_id ON push_subscriptions(calendar_id);

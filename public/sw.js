@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dailyforest-v1';
+const CACHE_NAME = 'dailyforest-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
@@ -82,15 +82,21 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = event.notification.data?.url || '/';
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url.includes(targetUrl) && 'focus' in client) {
           return client.focus();
         }
       }
+      if (clientList.length > 0 && 'focus' in clientList[0]) {
+        clientList[0].navigate(targetUrl);
+        return clientList[0].focus();
+      }
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        return clients.openWindow(targetUrl);
       }
     })
   );
@@ -100,14 +106,17 @@ self.addEventListener('push', (event) => {
   if (!event.data) return;
   try {
     const data = event.data.json();
-    const title = data.title || 'DailyForest';
+    const title = data.title || '🌲 DailyForest Reminder';
     const options = {
-      body: data.message || 'You have a scheduled reminder!',
-      icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      body: data.message || data.body || 'You have a scheduled reminder!',
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/icon-192.png',
+      data: data.data || {},
+      vibrate: [100, 50, 100],
     };
     event.waitUntil(self.registration.showNotification(title, options));
   } catch (err) {
     console.error('Error handling push event', err);
   }
 });
+

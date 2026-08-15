@@ -80,15 +80,22 @@ interface DayInfo {
 
 ## 2. Constants & Data Schemas
 
-### 2.1 Time Slots (`TIME_SLOTS`)
-Defines the hourly timeline bounds from 7:00 AM through 12:00 AM (17 distinct 80px slots):
+### 2.1 Time Slots (`TIME_SLOTS`) & Active Hours Preference (`ActiveHoursPreference`)
+Defines the hourly timeline bounds for the full 24-hour day starting from 12:00 AM (24 distinct 80px slots):
 ```typescript
 const TIME_SLOTS = [
-  '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-  '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM',
-  '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM', '10:00 PM', '11:00 PM', '12:00 AM'
+  '12:00 AM', '01:00 AM', '02:00 AM', '03:00 AM', '04:00 AM', '05:00 AM',
+  '06:00 AM', '07:00 AM', '08:00 AM', '09:00 AM', '10:00 AM', '11:00 AM',
+  '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM',
+  '06:00 PM', '07:00 PM', '08:00 PM', '09:00 PM', '10:00 PM', '11:00 PM',
 ]
+
+interface ActiveHoursPreference {
+  startHour: number // e.g. 6 (6 AM) or 4 (4 AM)
+  endHour: number   // e.g. 23 (11 PM) or 19 (7 PM)
+}
 ```
+The schedule grid supports user-customizable active hours (e.g. 6 AM – 11 PM, Early Bird 4 AM – 10 PM, Workday 8 AM – 7 PM, or full 24h) with smart auto-expansion if tasks exist outside active bounds.
 
 ### 2.2 Pastel Sticky-Note Palette (`COLORS`)
 A curated 12-color hex palette delivering warm Studio Ghibli pastel aesthetic styling:
@@ -157,3 +164,16 @@ flowchart TD
     G --> H["useEffect Syncs to localStorage ('weeklyTasks')"]
     H --> I["UI Re-renders Grid & Re-calculates Progress Percentage"]
 ```
+
+## 6. Session Lifecycle & Lazy Database Creation
+
+To prevent database clutter and ensure idempotent read operations:
+1. **Read Operations (`GET /api/calendars/[calendarId]`)**:
+   - `getSession` performs a read-only query.
+   - If the week has never had tasks added, `activeSession` returns `null` and `tasks` returns `[]`. No row is written to the database on page visit.
+2. **Write Mutations (`POST /api/calendars/[calendarId]/tasks`)**:
+   - `getOrCreateSession` is lazily invoked only when a task is created, updated, or imported into that week.
+3. **Session Querying (`getCalendarSessions`)**:
+   - Queries `sessions` filtered by `EXISTS (SELECT 1 FROM tasks WHERE tasks.session_id = sessions.id)`. Empty viewed weeks never permanently pollute the dropdown.
+4. **Monday Normalization (`normalizeToMonday`)**:
+   - All session dates snap strictly to Monday (`YYYY-MM-DD`). Mid-week date drift is eliminated.

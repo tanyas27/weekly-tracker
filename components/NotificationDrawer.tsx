@@ -11,11 +11,14 @@ interface NotificationDrawerProps {
   settings: NotificationSettings;
   permissionStatus: NotificationPermission | 'unsupported';
   isDark: boolean;
+  isPushSubscribed?: boolean;
+  isSendingTest?: boolean;
   onUpdateSettings: (newSettings: Partial<NotificationSettings>) => void;
   onMarkAsRead: (id: string) => void;
   onMarkAllAsRead: () => void;
   onClearAll: () => void;
   onRequestNativePermission: () => void;
+  onSendTestNotification?: () => void;
 }
 
 export default function NotificationDrawer({
@@ -25,11 +28,14 @@ export default function NotificationDrawer({
   settings,
   permissionStatus,
   isDark,
+  isPushSubscribed = false,
+  isSendingTest = false,
   onUpdateSettings,
   onMarkAsRead,
   onMarkAllAsRead,
   onClearAll,
   onRequestNativePermission,
+  onSendTestNotification,
 }: NotificationDrawerProps) {
   const [activeTab, setActiveTab] = useState<'history' | 'settings'>('history');
 
@@ -395,9 +401,7 @@ export default function NotificationDrawer({
                     <option value={15}>15 minutes before</option>
                     <option value={30}>30 minutes before</option>
                   </select>
-                </div>
-
-                {/* Native Browser Notification Permission */}
+                </div>                  {/* Native Browser Notification Permission */}
                 <div
                   className={`p-4 rounded-xl border space-y-3 backdrop-blur-md shadow-sm ${
                     isDark
@@ -405,20 +409,29 @@ export default function NotificationDrawer({
                       : 'bg-white/30 border-white/50 text-gray-900'
                   }`}
                 >
-                  <h4
-                    className={`font-semibold text-sm ${
-                      isDark ? 'text-gray-200' : 'text-gray-800'
-                    }`}
-                  >
-                    Native Browser Push Alerts
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4
+                      className={`font-semibold text-sm ${
+                        isDark ? 'text-gray-200' : 'text-gray-800'
+                      }`}
+                    >
+                      Background Web Push Alerts
+                    </h4>
+                    {isPushSubscribed && (
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        isDark ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300' : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                      }`}>
+                        Push Active
+                      </span>
+                    )}
+                  </div>
                   <p className={`text-[11px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Receive system push alerts on Desktop or Mobile even when app is in the background.
+                    Receive system alerts even when the app or PWA is in the background or closed.
                   </p>
 
                   {permissionStatus === 'granted' ? (
                     <div
-                      className={`space-y-2 pt-1 border-t ${
+                      className={`space-y-3 pt-1 border-t ${
                         isDark ? 'border-white/10' : 'border-white/30'
                       }`}
                     >
@@ -428,7 +441,7 @@ export default function NotificationDrawer({
                             isDark ? 'text-emerald-400' : 'text-emerald-700'
                           }`}
                         >
-                          <CheckCircle2 className="w-4 h-4" /> Permission Granted
+                          <CheckCircle2 className="w-4 h-4" /> System Permission Granted
                         </div>
                         <input
                           type="checkbox"
@@ -437,8 +450,27 @@ export default function NotificationDrawer({
                           className="w-4 h-4 accent-gray-900 dark:accent-blue-500 rounded cursor-pointer"
                         />
                       </div>
+
+                      {onSendTestNotification && (
+                        <button
+                          type="button"
+                          onClick={onSendTestNotification}
+                          disabled={isSendingTest}
+                          className={`w-full py-2 px-3 text-xs font-semibold rounded-lg border transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer ${
+                            isDark
+                              ? 'bg-zinc-800 border-white/15 text-zinc-200 hover:bg-zinc-700 disabled:opacity-50'
+                              : 'bg-emerald-50/80 border-emerald-200 text-[#2D5F3E] hover:bg-emerald-100 disabled:opacity-50'
+                          }`}
+                        >
+                          <BellRing className="w-3.5 h-3.5" />
+                          {isSendingTest ? 'Sending Test Alert...' : 'Send Test Background Alert'}
+                        </button>
+                      )}
+
                       <p className={`text-[10px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Toggle to enable or mute background OS popups.
+                        {isPushSubscribed
+                          ? 'Device registered with push service. Reminders will arrive in the background.'
+                          : 'Push service registering. Tap test button above to verify delivery.'}
                       </p>
                     </div>
                   ) : permissionStatus === 'denied' ? (
@@ -467,7 +499,7 @@ export default function NotificationDrawer({
                           : 'bg-gray-900 hover:bg-gray-800 text-white'
                       }`}
                     >
-                      <BellRing className="w-4 h-4" /> Request Browser Permission
+                      <BellRing className="w-4 h-4" /> Enable Background Notifications
                     </button>
                   )}
                 </div>

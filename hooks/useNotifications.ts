@@ -21,16 +21,70 @@ import { useLocalStorage } from './useLocalStorage';
 
 const DAY_MAP = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export function useNotifications(tasks: Task[], calendarId?: string) {
   const [settings, setSettings] = useLocalStorage(DEFAULT_SETTINGS, getStoredSettings, saveStoredSettings);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [activeToasts, setActiveToasts] = useState<AppNotification[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission | 'unsupported'>('default');
+  const [isPushSubscribed, setIsPushSubscribed] = useState(false);
+  const [isSendingTest, setIsSendingTest] = useState(false);
 
   // Track sent reminders and daily summary date persistently
   const sentRemindersRef = useRef<Set<string>>(new Set());
   const dailySummarySentRef = useRef<string | null>(null);
+
+  // Sync Push subscription helper
+  const syncPushSubscription = useCallback(async (currentCalendarId?: string) => {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+      return false;
+    }
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+
+      if (!sub && Notification.permission === 'granted') {
+        const res = await fetch('/api/notifications/vapid-key');
+        if (res.ok) {
+          const { publicKey } = await res.json();
+          if (publicKey) {
+            const applicationServerKey = urlBase64ToUint8Array(publicKey);
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey,
+            });
+          }
+        }
+      }
+
+      if (sub) {
+        setIsPushSubscribed(true);
+        await fetch('/api/notifications/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subscription: sub.toJSON(),
+            calendarId: currentCalendarId || undefined,
+          }),
+        });
+        return true;
+      }
+    } catch (err) {
+      console.warn('Push sync notice:', err);
+    }
+    return false;
+  }, []);
 
   // Load ref-backed state and detect notification permission after mount & calendarId change
   useEffect(() => {
@@ -38,13 +92,16 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
       setNotifications(getStoredNotifications(calendarId));
       if (typeof window !== 'undefined' && 'Notification' in window) {
         setPermissionStatus(Notification.permission);
+        if (Notification.permission === 'granted') {
+          syncPushSubscription(calendarId);
+        }
       } else if (typeof window !== 'undefined') {
         setPermissionStatus('unsupported');
       }
     });
     sentRemindersRef.current = new Set(getStoredSentReminderKeys(calendarId));
     dailySummarySentRef.current = getStoredDailySummaryDate();
-  }, [calendarId]);
+  }, [calendarId, syncPushSubscription]);
 
   // Persist notification changes helper
   const updateNotifications = useCallback(
@@ -139,10 +196,53 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
     setPermissionStatus(permission);
     if (permission === 'granted') {
       updateSettings({ nativeNotificationsEnabled: true });
+      await syncPushSubscription(calendarId);
     } else {
       updateSettings({ nativeNotificationsEnabled: false });
+      setIsPushSubscribed(false);
     }
-  }, [updateSettings]);
+  }, [updateSettings, syncPushSubscription, calendarId]);
+
+  // Test Notification Trigger (sends real Web Push if supported)
+  const sendTestNotification = useCallback(async () => {
+    setIsSendingTest(true);
+    try {
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          const res = await fetch('/api/notifications/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              calendarId,
+              subscription: sub.toJSON(),
+            }),
+          });
+          if (res.ok) {
+            setIsSendingTest(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback to in-app / native Notification
+      addNotification({
+        title: '🌲 DailyForest Test Reminder',
+        message: 'Your notification system is working! You will receive task reminders right on time.',
+        type: 'reminder',
+      });
+    } catch (err) {
+      console.error('Test notification failed:', err);
+      addNotification({
+        title: '🌲 DailyForest Test Reminder',
+        message: 'Your notification system is working! You will receive task reminders right on time.',
+        type: 'reminder',
+      });
+    } finally {
+      setIsSendingTest(false);
+    }
+  }, [calendarId, addNotification]);
 
   // Completion toast trigger
   const notifyTaskCompleted = useCallback(
@@ -158,7 +258,7 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
     [addNotification, settings.enabled]
   );
 
-  // Background check interval for scheduled task reminders and daily summary
+  // Background check interval for scheduled task reminders and daily summary (when active)
   useEffect(() => {
     if (!settings.enabled) return;
 
@@ -211,6 +311,8 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
     drawerOpen,
     unreadCount,
     permissionStatus,
+    isPushSubscribed,
+    isSendingTest,
     setDrawerOpen,
     dismissToast,
     markAsRead,
@@ -218,6 +320,7 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
     clearAllNotifications,
     updateSettings,
     requestNativePermission,
+    sendTestNotification,
     notifyTaskCompleted,
   };
 }
