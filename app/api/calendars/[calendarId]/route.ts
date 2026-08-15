@@ -4,7 +4,9 @@ import {
   getSession,
   getCalendarSessions,
   getTasksForSession,
+  updateCalendarTitle,
 } from '@/lib/db';
+import { broadcastCalendarUpdate } from '@/lib/db/events';
 import { verifyPasscode } from '@/lib/crypto-utils';
 import { normalizeToMonday } from '@/lib/time-utils';
 
@@ -32,7 +34,7 @@ export async function GET(
     if (!calendar) {
       return NextResponse.json(
         {
-          calendar: { id: calendarId, title: 'August 2026', isPrivate: false },
+          calendar: { id: calendarId, title: 'My Weekly Schedule', isPrivate: false },
           isPrivate: false,
           isLocked: false,
           sessions: [],
@@ -96,6 +98,60 @@ export async function GET(
     );
   } catch (error) {
     console.error('API /api/calendars/[calendarId] error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: NO_CACHE_HEADERS });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ calendarId: string }> }
+) {
+  try {
+    const { calendarId } = await params;
+    const body = await request.json();
+    const title = typeof body.title === 'string' ? body.title : typeof body.name === 'string' ? body.name : '';
+
+    if (!title.trim()) {
+      return NextResponse.json({ error: 'Calendar title is required' }, { status: 400, headers: NO_CACHE_HEADERS });
+    }
+
+    const cleanTitle = title.trim().slice(0, 255);
+
+    const calendar = await getCalendar(calendarId);
+
+    // Verify passcode if calendar is private
+    if (calendar?.is_private && calendar.passcode_hash) {
+      const passcode = request.headers.get('x-calendar-passcode') || new URL(request.url).searchParams.get('passcode');
+      const isValid = passcode ? verifyPasscode(passcode, calendar.passcode_hash) : false;
+      if (!isValid) {
+        return NextResponse.json({ error: 'Unauthorized: Passcode required' }, { status: 401, headers: NO_CACHE_HEADERS });
+      }
+    }
+
+    const success = await updateCalendarTitle(calendarId, cleanTitle);
+    if (!success) {
+      return NextResponse.json({ error: 'Failed to update calendar title' }, { status: 500, headers: NO_CACHE_HEADERS });
+    }
+
+    broadcastCalendarUpdate(calendarId, {
+      type: 'CALENDAR_UPDATED',
+      calendarId,
+      title: cleanTitle,
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        calendar: {
+          id: calendarId,
+          title: cleanTitle,
+          isPrivate: calendar?.is_private || false,
+        },
+      },
+      { headers: NO_CACHE_HEADERS }
+    );
+  } catch (error) {
+    console.error('API PATCH /api/calendars/[calendarId] error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: NO_CACHE_HEADERS });
   }
 }

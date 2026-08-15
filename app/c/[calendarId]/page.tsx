@@ -15,7 +15,7 @@ import {
   getStoredActiveHours,
   saveStoredActiveHours,
 } from '@/lib/time-utils'
-import { START_HOUR, SLOT_HEIGHT_PX } from '@/lib/constants'
+import { SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/lib/task-overlap'
 import { useCurrentTime } from '@/hooks/useCurrentTime'
 import { useTasks, TaskModalFormData } from '@/hooks/useTasks'
@@ -80,7 +80,9 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     serverPrivacyState,
     unlockServerState,
     isLoaded,
-    refetch
+    refetch,
+    calendarTitle,
+    updateCalendarTitle,
   } = useTasks(days, calendarId, selectedWeek, passcodeHash)
 
   useEffect(() => {
@@ -128,7 +130,9 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setActiveHours(getStoredActiveHours())
+      queueMicrotask(() => {
+        setActiveHours(getStoredActiveHours())
+      })
     }
   }, [])
 
@@ -151,7 +155,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         setIsDark(localStorage.getItem('theme') === 'dark')
         setIsMounted(true)
         if (calendarId) {
-          recordRecentCalendar(calendarId, 'My Planner', isPrivate, {
+          recordRecentCalendar(calendarId, calendarTitle, isPrivate, {
             taskCount: tasks.length,
             completedCount: tasks.filter((t) => t.completed).length,
             lastActiveWeek: selectedWeek,
@@ -160,7 +164,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       }
     }, 0)
     return () => clearTimeout(timer)
-  }, [calendarId, isPrivate, tasks.length, selectedWeek])
+  }, [calendarId, calendarTitle, isPrivate, tasks, selectedWeek])
 
   useEffect(() => {
     if (isMounted && typeof window !== 'undefined') {
@@ -405,6 +409,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
             unreadNotificationsCount={unreadCount}
             onOpenNotifications={() => setDrawerOpen(true)}
             calendarId={calendarId}
+            calendarTitle={calendarTitle}
+            onUpdateCalendarTitle={updateCalendarTitle}
             sessions={sessions}
             selectedWeek={selectedWeek}
             onSelectWeek={setSelectedWeek}
@@ -463,7 +469,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
           </div>
         ) : (isPrivate || serverPrivacyState.isPrivate) && (isLocked && serverPrivacyState.isLocked) ? (
           <PrivacyLockScreen
-            calendarTitle={monthYear}
+            calendarTitle={calendarTitle || monthYear}
             isDark={isDark}
             onUnlock={async (passcode) => {
               const res = await unlockCalendar(passcode)

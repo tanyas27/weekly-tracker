@@ -53,12 +53,12 @@ export function recordRecentCalendar(
     const existingList = getRecentCalendars()
     const existing = existingList.find((item) => item.id === id)
     const remaining = existingList.filter((item) => item.id !== id)
-    const isGenericTitle = !title || title === 'My Planner' || title === 'My Weekly Schedule'
+    const resolvedTitle = title?.trim() ? title.trim() : existing?.title
 
     const updated: RecentCalendar[] = [
       {
         id,
-        title: isGenericTitle ? existing?.title : title,
+        title: resolvedTitle,
         lastVisited: Date.now(),
         isPrivate: isPrivate !== undefined ? isPrivate : existing?.isPrivate,
         taskCount: extra?.taskCount !== undefined ? extra.taskCount : existing?.taskCount,
