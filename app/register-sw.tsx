@@ -15,6 +15,17 @@ export default function RegisterSW() {
       } else {
         let refreshing = false
 
+        // Proactively purge legacy caches directly from window context
+        if ('caches' in window) {
+          caches.keys().then((keys) => {
+            keys.forEach((key) => {
+              if (key !== 'dailyforest-v4') {
+                caches.delete(key)
+              }
+            })
+          })
+        }
+
         // Automatically reload the page once the new Service Worker activates and takes control
         navigator.serviceWorker.addEventListener('controllerchange', () => {
           if (!refreshing) {

@@ -22,6 +22,8 @@ interface ScheduleGridProps {
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
   onMoveTask: (taskId: string, fromDay: string, toDay: string, slotIndex: number) => void
+  scrollRef?: React.RefObject<HTMLDivElement | null>
+  onScroll?: (e: React.UIEvent<HTMLDivElement>) => void
 }
 
 interface DayColumnProps {
@@ -56,14 +58,12 @@ const DayColumn = React.memo(function DayColumn({
 
   return (
     <div
-      className={`flex-1 ${minWidthClassName} border-r last:border-r-0 relative transition-colors ${
+      className={`flex-1 ${minWidthClassName} relative transition-colors ${
         day.isToday
           ? isDark
-            ? 'bg-[#BDCC8D]/[0.07] border-white/[0.08]'
-            : 'bg-[#2D5F3E]/[0.05] border-white/40'
-          : isDark
-            ? 'border-white/[0.06]'
-            : 'border-white/30'
+            ? 'bg-[#BDCC8D]/[0.07]'
+            : 'bg-[#2D5F3E]/[0.05]'
+          : ''
       }`}
       style={{ height: visibleSlotCount * SLOT_HEIGHT_PX }}
     >
@@ -159,6 +159,8 @@ export function ScheduleGrid({
   onOpenEditModal,
   onToggleComplete,
   onMoveTask,
+  scrollRef,
+  onScroll,
 }: ScheduleGridProps) {
   const allTasks = useMemo(() => Object.values(tasksByDay).flat(), [tasksByDay])
   const baseStart = activeHours?.startHour ?? DEFAULT_ACTIVE_HOURS.startHour
@@ -189,7 +191,7 @@ export function ScheduleGrid({
   return (
     <div
       id="schedule-grid-container"
-      className={`rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative z-30 transition-colors border backdrop-blur-xl ${
+      className={`rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden relative z-10 transition-colors border backdrop-blur-xl ${
         isDark
           ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
           : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.10)]'
@@ -201,6 +203,15 @@ export function ScheduleGrid({
         <div className={`${timeGutterCls} border-r transition-colors ${
           isDark ? 'border-white/[0.08] bg-zinc-900/40' : 'border-white/40 bg-white/30'
         }`}>
+          {/* Top TIME Header Box for desktop */}
+          <div
+            className={`hidden md:flex h-[88px] sm:h-[92px] items-center justify-center border-b transition-colors ${
+              isDark ? 'border-white/[0.08] bg-zinc-900/60 text-zinc-500' : 'border-white/40 bg-white/40 text-zinc-400'
+            }`}
+          >
+            <span className="text-[10px] font-black tracking-widest uppercase">TIME</span>
+          </div>
+
           {visibleTimeSlots.map((time) => (
             <div
               key={time}
@@ -214,21 +225,23 @@ export function ScheduleGrid({
         </div>
 
         {/* Schedule grid area */}
-        <div className="flex-1 relative overflow-x-auto">
-          {/* Real-time ticker line */}
-          {currentTimeTop !== null && (
-            <div
-              className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-[#2D5F3E] to-[#BDCC8D] z-20 pointer-events-none"
-              style={{ top: `${currentTimeTop}px` }}
-            >
-              <div className={`absolute left-0 w-2.5 h-2.5 rounded-full -translate-y-1/2 shadow-lg animate-pulse ${
-                isDark ? 'bg-[#BDCC8D]' : 'bg-[#2D5F3E]'
-              }`} />
-            </div>
-          )}
-
+        <div
+          ref={scrollRef}
+          onScroll={onScroll}
+          className="flex-1 relative overflow-x-auto"
+        >
           {/* Mobile view single-day column */}
-          <div className="flex md:hidden">
+          <div className="flex md:hidden relative">
+            {currentTimeTop !== null && (
+              <div
+                className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-[#2D5F3E] to-[#BDCC8D] z-20 pointer-events-none"
+                style={{ top: `${currentTimeTop}px` }}
+              >
+                <div className={`absolute left-0 w-2.5 h-2.5 rounded-full -translate-y-1/2 shadow-lg animate-pulse ${
+                  isDark ? 'bg-[#BDCC8D]' : 'bg-[#2D5F3E]'
+                }`} />
+              </div>
+            )}
             {activeMobileDay && (
               <DayColumn
                 day={activeMobileDay}
@@ -247,22 +260,76 @@ export function ScheduleGrid({
           </div>
 
           {/* Desktop view 7-day columns */}
-          <div className="hidden md:flex">
+          <div className="hidden md:flex relative">
+            {currentTimeTop !== null && (
+              <div
+                className="absolute left-0 right-0 h-[2px] bg-gradient-to-r from-[#2D5F3E] to-[#BDCC8D] z-20 pointer-events-none"
+                style={{ top: `${currentTimeTop + 92}px` }}
+              >
+                <div className={`absolute left-0 w-2.5 h-2.5 rounded-full -translate-y-1/2 shadow-lg animate-pulse ${
+                  isDark ? 'bg-[#BDCC8D]' : 'bg-[#2D5F3E]'
+                }`} />
+              </div>
+            )}
             {days.map((day) => (
-              <DayColumn
+              <div
                 key={day.short}
-                day={day}
-                tasks={tasksByDay[day.short] ?? []}
-                currentTimeHour={currentTimeHour}
-                isDark={isDark}
-                minWidthClassName="min-w-[140px]"
-                startHour={effectiveStartHour}
-                visibleSlotCount={visibleTimeSlots.length}
-                onOpenAddModal={onOpenAddModal}
-                onOpenEditModal={onOpenEditModal}
-                onToggleComplete={onToggleComplete}
-                onMoveTask={onMoveTask}
-              />
+                className={`flex-1 min-w-[140px] flex flex-col border-r last:border-r-0 ${
+                  isDark ? 'border-white/[0.08]' : 'border-white/40'
+                }`}
+              >
+                {/* Day Header Badge */}
+                <div
+                  className={`h-[88px] sm:h-[92px] flex flex-col items-center justify-center py-3 px-2 text-center border-b transition-colors ${
+                    day.isToday
+                      ? isDark
+                        ? 'bg-[#BDCC8D]/15 border-white/[0.08] text-[#BDCC8D]'
+                        : 'bg-[#2D5F3E]/10 border-white/40 text-[#2D5F3E]'
+                      : isDark
+                      ? 'border-white/[0.06] bg-zinc-900/30 text-zinc-300'
+                      : 'border-white/30 bg-white/20 text-zinc-700'
+                  }`}
+                >
+                  <div
+                    className={`text-xs font-extrabold tracking-wider uppercase ${
+                      day.isToday
+                        ? isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
+                        : isDark ? 'text-zinc-400' : 'text-zinc-500'
+                    }`}
+                  >
+                    {day.short}
+                  </div>
+                  <div
+                    className={`text-2xl sm:text-3xl font-black leading-none mt-1 ${
+                      isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
+                    }`}
+                  >
+                    {day.date}
+                  </div>
+                  {day.isToday && (
+                    <span
+                      className={`inline-block w-1.5 h-1.5 rounded-full mt-1.5 ${
+                        isDark ? 'bg-[#BDCC8D]' : 'bg-[#2D5F3E]'
+                      }`}
+                    />
+                  )}
+                </div>
+
+                {/* Day Column Timeline */}
+                <DayColumn
+                  day={day}
+                  tasks={tasksByDay[day.short] ?? []}
+                  currentTimeHour={currentTimeHour}
+                  isDark={isDark}
+                  minWidthClassName="w-full"
+                  startHour={effectiveStartHour}
+                  visibleSlotCount={visibleTimeSlots.length}
+                  onOpenAddModal={onOpenAddModal}
+                  onOpenEditModal={onOpenEditModal}
+                  onToggleComplete={onToggleComplete}
+                  onMoveTask={onMoveTask}
+                />
+              </div>
             ))}
           </div>
         </div>

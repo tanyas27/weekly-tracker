@@ -36,7 +36,7 @@ import { recordRecentCalendar } from '@/lib/recent-calendars'
 
 export default function CalendarPage({ params }: { params: Promise<{ calendarId: string }> }) {
   const { calendarId } = use(params)
-  
+
   const {
     isPrivate,
     isLocked,
@@ -49,7 +49,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
-  
+
   const defaultMonday = useMemo(() => {
     const today = new Date()
     const currentDay = today.getDay()
@@ -295,32 +295,28 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
   })
 
   return (
-    <div className={`min-h-screen pt-16 sm:pt-18 md:pt-20 pb-12 px-1 sm:px-2 md:px-3 relative transition-colors overflow-hidden ${
-      isDark ? 'bg-[#0e1410] text-zinc-100' : 'bg-[#d4dfc8] text-[#1a2e23]'
-    }`}>
+    <div className={`min-h-screen pt-18 md:pt-20 pb-12 px-2.5 sm:px-4 md:px-6 relative transition-colors overflow-hidden ${isDark ? 'bg-[#0e1410] text-zinc-100' : 'bg-[#d4dfc8] text-[#1a2e23]'
+      }`}>
       {/* Ghibli background artwork */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Image
           src="/bcg.jpg"
           alt=""
           fill
-          className={`object-cover transition-opacity duration-500 ${
-            isDark ? 'opacity-25' : 'opacity-55'
-          }`}
+          className={`object-cover transition-opacity duration-500 ${isDark ? 'opacity-25' : 'opacity-55'
+            }`}
           priority
           quality={70}
           sizes="100vw"
         />
       </div>
       {/* Dark overlay to keep text readable */}
-      <div className={`fixed inset-0 pointer-events-none z-0 ${
-        isDark ? 'bg-[#0e1410]/65' : 'bg-white/20'
-      }`} />
+      <div className={`fixed inset-0 pointer-events-none z-0 ${isDark ? 'bg-[#0e1410]/65' : 'bg-white/20'
+        }`} />
 
       {/* Totoro — bottom right */}
-      <div className={`hidden lg:block fixed -right-16 bottom-16 pointer-events-none z-0 transition-opacity ${
-        isDark ? 'opacity-40' : 'opacity-70'
-      }`}>
+      <div className={`hidden lg:block fixed -right-16 bottom-16 pointer-events-none z-0 transition-opacity ${isDark ? 'opacity-40' : 'opacity-70'
+        }`}>
         <Image
           src={TOTORO_IMAGE_SRC}
           alt=""
@@ -332,15 +328,13 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         />
       </div>
 
-      <nav className={`fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b transition-colors ${
-        isDark ? 'bg-[#0e1410]/60 border-white/10' : 'bg-white/30 border-white/50'
-      }`}>
+      <nav className={`fixed top-0 inset-x-0 z-40 backdrop-blur-xl border-b transition-colors ${isDark ? 'bg-[#0e1410]/80 border-white/10' : 'bg-white/70 border-white/50'
+        }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/?home=true" className="flex items-center gap-2 group">
             <LogoBadge size={30} className="transition-transform group-hover:scale-105" />
-            <span className={`text-lg font-handwritten font-bold ${
-              isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
-            }`}>
+            <span className={`text-lg font-handwritten font-bold ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
+              }`}>
               DailyForest
             </span>
           </Link>
@@ -350,22 +344,20 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
                 type="button"
                 onClick={() => setIsDark((prev) => !prev)}
                 aria-label="Toggle theme"
-                className={`p-2 rounded-full border transition-colors cursor-pointer ${
-                  isDark
-                    ? 'bg-zinc-800 border-white/10 text-yellow-400 hover:bg-zinc-700'
-                    : 'bg-white border-black/10 text-zinc-600 hover:bg-zinc-50'
-                }`}
+                className={`p-2 rounded-full border transition-colors cursor-pointer ${isDark
+                  ? 'bg-zinc-800 border-white/10 text-yellow-400 hover:bg-zinc-700'
+                  : 'bg-white border-black/10 text-zinc-600 hover:bg-zinc-50'
+                  }`}
               >
                 {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
             )}
             <Link
-              href="/"
-              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
-                isDark
-                  ? 'border-white/10 bg-zinc-800/80 text-[#BDCC8D] hover:bg-zinc-700'
-                  : 'border-black/[0.04] bg-white text-[#2D5F3E] hover:bg-zinc-50'
-              }`}
+              href="/?home=true"
+              className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${isDark
+                ? 'border-white/10 bg-zinc-800/80 text-[#BDCC8D] hover:bg-zinc-700'
+                : 'border-black/[0.04] bg-white text-[#2D5F3E] hover:bg-zinc-50'
+                }`}
             >
               ← Home
             </Link>
@@ -395,11 +387,10 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header & Date Selector Card */}
         <div
-          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${
-            isDark
-              ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
-              : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.12)]'
-          }`}
+          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-3.5 sm:py-4 sm:px-6 mb-3.5 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${isDark
+            ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
+            : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.12)]'
+            }`}
         >
           <Header
             monthYear={monthYear}
@@ -430,6 +421,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
               timezone={currentTime.timezone}
               isDark={isDark}
               activeMobileDay={activeMobileDay}
+              onSelectMobileDay={(short) => setMobileSelectedDay(short)}
               onPrevMobileDay={goToPreviousMobileDay}
               onNextMobileDay={goToNextMobileDay}
             />
@@ -438,9 +430,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
         {/* Timeline Grid Container */}
         {!isLoaded ? (
-          <div className={`rounded-2xl sm:rounded-3xl overflow-hidden border backdrop-blur-2xl ${
-            isDark ? 'bg-zinc-900/40 border-white/10' : 'bg-white/30 border-white/60'
-          }`}>
+          <div className={`rounded-2xl sm:rounded-3xl overflow-hidden border backdrop-blur-2xl ${isDark ? 'bg-zinc-900/40 border-white/10' : 'bg-white/30 border-white/60'
+            }`}>
             {/* Skeleton header row */}
             <div className={`flex border-b ${isDark ? 'border-zinc-800' : 'border-zinc-200'}`}>
               <div className={`w-16 sm:w-20 md:w-24 flex-shrink-0 border-r py-4 ${isDark ? 'border-zinc-800 bg-zinc-900' : 'border-zinc-200 bg-zinc-50'}`} />
