@@ -13,21 +13,62 @@ export default function RegisterSW() {
           }
         })
       } else {
+        let refreshing = false
+
+        // Automatically reload the page once the new Service Worker activates and takes control
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true
+            window.location.reload()
+          }
+        })
+
+        let currentRegistration: ServiceWorkerRegistration | null = null
+
         const registerAndCheck = async () => {
           try {
-            const registration = await navigator.serviceWorker.register('/sw.js')
+            currentRegistration = await navigator.serviceWorker.register('/sw.js')
+
+            if (currentRegistration.waiting) {
+              currentRegistration.waiting.postMessage({ type: 'SKIP_WAITING' })
+            }
+
+            currentRegistration.addEventListener('updatefound', () => {
+              const newWorker = currentRegistration?.installing
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    newWorker.postMessage({ type: 'SKIP_WAITING' })
+                  }
+                })
+              }
+            })
+
             // Proactively check for byte updates to sw.js on PWA launch
-            registration.update()
+            currentRegistration.update().catch(() => {})
           } catch (error) {
             console.error('SW registration failed: ', error)
           }
         }
 
+        // Re-check for updates whenever the PWA is resumed/focused
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible' && currentRegistration) {
+            currentRegistration.update().catch(() => {})
+          }
+        }
+
+        document.addEventListener('visibilitychange', handleVisibilityChange)
+
         if (document.readyState === 'complete') {
           registerAndCheck()
         } else {
           window.addEventListener('load', registerAndCheck)
-          return () => window.removeEventListener('load', registerAndCheck)
+        }
+
+        return () => {
+          window.removeEventListener('load', registerAndCheck)
+          document.removeEventListener('visibilitychange', handleVisibilityChange)
         }
       }
     }

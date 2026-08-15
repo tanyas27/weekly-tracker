@@ -1,6 +1,5 @@
-const CACHE_NAME = 'dailyforest-v3';
+const CACHE_NAME = 'dailyforest-v4';
 const urlsToCache = [
-  '/',
   '/manifest.json',
   '/bcg.jpg',
   '/totoro.png',
@@ -18,6 +17,12 @@ self.addEventListener('install', (event) => {
       .then((cache) => cache.addAll(urlsToCache))
   );
   self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
