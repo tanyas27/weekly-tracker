@@ -23,9 +23,9 @@ export function DaySelector({
   onNextMobileDay,
 }: DaySelectorProps) {
   return (
-    <div className="md:hidden flex gap-2 items-center overflow-x-auto pb-0.5 pt-1">
+    <div className="md:hidden mt-2.5">
       {/* MOBILE 7-DAY MINI HORIZONTAL TOUCH BAR (< md) */}
-      <div className="grid grid-cols-7 gap-1 w-full pt-0.5 pb-0.5">
+      <div className="grid grid-cols-7 gap-1.5 w-full">
         {days.map((day) => {
           const isSelected = activeMobileDay?.short === day.short
           return (
@@ -33,7 +33,7 @@ export function DaySelector({
               key={day.short}
               type="button"
               onClick={() => onSelectMobileDay?.(day.short)}
-              className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl border transition-all active:scale-95 cursor-pointer min-h-[50px] ${
+              className={`flex flex-col items-center justify-center py-1 px-0.5 rounded-xl border transition-all active:scale-95 cursor-pointer h-[46px] ${
                 isSelected
                   ? isDark
                     ? 'bg-[#BDCC8D] border-[#BDCC8D] text-zinc-950 font-black shadow-md ring-2 ring-[#BDCC8D]/30 scale-[1.02]'
@@ -61,7 +61,7 @@ export function DaySelector({
                 {day.short.slice(0, 3)}
               </span>
               <span
-                className={`text-sm sm:text-base font-black leading-tight mt-0.5 ${
+                className={`text-sm font-black leading-tight mt-0.5 ${
                   isSelected
                     ? isDark ? 'text-zinc-950' : 'text-white'
                     : isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
@@ -69,15 +69,15 @@ export function DaySelector({
               >
                 {day.date}
               </span>
-              {day.isToday && (
-                <span
-                  className={`w-1 h-1 rounded-full mt-0.5 ${
-                    isSelected
+              <span
+                className={`w-1 h-1 rounded-full mt-0.5 ${
+                  day.isToday
+                    ? isSelected
                       ? isDark ? 'bg-zinc-950' : 'bg-white'
                       : isDark ? 'bg-[#BDCC8D]' : 'bg-[#2D5F3E]'
-                  }`}
-                />
-              )}
+                    : 'invisible'
+                }`}
+              />
             </button>
           )
         })}

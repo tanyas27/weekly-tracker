@@ -407,9 +407,9 @@ export function Header({
   )
 
   return (
-    <div className="flex flex-col gap-2.5 mb-1 md:mb-0">
+    <div className="flex flex-col gap-2.5">
       {/* MOBILE COMPACT 2-ROW HEADER (< md) */}
-      <div className="flex flex-col gap-2 md:hidden">
+      <div className="flex flex-col gap-2.5 md:hidden">
         {/* Mobile Row 1: Month Title, Switcher, Bell */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
