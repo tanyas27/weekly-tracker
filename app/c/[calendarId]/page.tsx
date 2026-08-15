@@ -332,11 +332,11 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         />
       </div>
 
-      <nav className={`fixed top-0 inset-x-0 z-50 backdrop-blur-xl border-b transition-colors ${
-        isDark ? 'bg-[#0e1410]/60 border-white/10' : 'bg-white/30 border-white/50'
+      <nav className={`fixed top-0 inset-x-0 z-40 backdrop-blur-xl border-b transition-colors ${
+        isDark ? 'bg-[#0e1410]/80 border-white/10' : 'bg-white/70 border-white/50'
       }`}>
         <div className="max-w-7xl mx-auto flex items-center justify-between h-14 px-4 sm:px-6">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link href="/?home=true" className="flex items-center gap-2 group">
             <LogoBadge size={30} className="transition-transform group-hover:scale-105" />
             <span className={`text-lg font-handwritten font-bold ${
               isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
@@ -360,7 +360,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
               </button>
             )}
             <Link
-              href="/"
+              href="/?home=true"
               className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors ${
                 isDark
                   ? 'border-white/10 bg-zinc-800/80 text-[#BDCC8D] hover:bg-zinc-700'
@@ -395,7 +395,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       <div className="max-w-7xl mx-auto relative z-10">
         {/* Header & Date Selector Card */}
         <div
-          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-4 sm:p-6 mb-4 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${
+          className={`rounded-2xl sm:rounded-3xl shadow-2xl p-3 sm:p-6 mb-3 sm:mb-6 backdrop-blur-2xl relative z-30 border transition-colors ${
             isDark
               ? 'bg-zinc-900/50 border-white/10 shadow-black/50'
               : 'bg-white/50 border-white/60 shadow-[0_8px_32px_rgba(45,95,62,0.12)]'
@@ -430,6 +430,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
               timezone={currentTime.timezone}
               isDark={isDark}
               activeMobileDay={activeMobileDay}
+              onSelectMobileDay={(short) => setMobileSelectedDay(short)}
               onPrevMobileDay={goToPreviousMobileDay}
               onNextMobileDay={goToNextMobileDay}
             />

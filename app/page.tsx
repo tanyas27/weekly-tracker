@@ -55,16 +55,23 @@ export default function LandingPage() {
         setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches)
       }
 
+      const searchParams = new URLSearchParams(window.location.search)
+      const isExplicitHome = searchParams.get('home') === 'true' || searchParams.get('hub') === 'true'
+
       const isStandalone =
         window.matchMedia('(display-mode: standalone)').matches ||
         (window.navigator as unknown as { standalone?: boolean }).standalone === true
 
+      const hasResumedThisSession = sessionStorage.getItem('pwa_auto_resumed') === 'true'
+
       const lastId = getLastActiveCalendarId()
-      if (isStandalone && lastId) {
+      if (isStandalone && lastId && !isExplicitHome && !hasResumedThisSession) {
+        sessionStorage.setItem('pwa_auto_resumed', 'true')
         router.replace(`/c/${lastId}`)
         return
       }
 
+      sessionStorage.setItem('pwa_auto_resumed', 'true')
       setRecentCalendars(getRecentCalendars())
     })
   }, [router])
@@ -255,8 +262,8 @@ export default function LandingPage() {
                         <h2 className={`text-lg sm:text-xl font-black tracking-tight ${
                           isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
                         }`}>
-                          {activeCalendar.title && activeCalendar.title !== 'My Planner' && activeCalendar.title !== 'My Weekly Schedule'
-                            ? activeCalendar.title
+                          {activeCalendar.title && activeCalendar.title.trim()
+                            ? activeCalendar.title.trim()
                             : `Planner #${activeCalendar.id.slice(0, 6)}`}
                         </h2>
                         <div className="flex items-center gap-2 mt-1 text-xs opacity-70">
@@ -410,8 +417,8 @@ export default function LandingPage() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                     {filteredCalendars.map((item, idx) => {
-                      const displayName = item.title && item.title !== 'My Planner' && item.title !== 'My Weekly Schedule'
-                        ? item.title
+                      const displayName = item.title && item.title.trim()
+                        ? item.title.trim()
                         : `Planner #${item.id.slice(0, 6)}`
                       const isFirst = idx === 0
                       return (

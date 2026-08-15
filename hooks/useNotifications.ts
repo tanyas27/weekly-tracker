@@ -32,6 +32,15 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray;
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs = 2500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+    ),
+  ]);
+}
+
 export function useNotifications(tasks: Task[], calendarId?: string) {
   const [settings, setSettings] = useLocalStorage(DEFAULT_SETTINGS, getStoredSettings, saveStoredSettings);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -51,7 +60,7 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
       return false;
     }
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await withTimeout(navigator.serviceWorker.ready, 2500);
       let sub = await reg.pushManager.getSubscription();
 
       if (!sub && Notification.permission === 'granted') {
@@ -206,36 +215,60 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
   // Test Notification Trigger (sends real Web Push if supported)
   const sendTestNotification = useCallback(async () => {
     setIsSendingTest(true);
+    let pushDelivered = false;
+
     try {
-      if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-        const reg = await navigator.serviceWorker.ready;
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          const res = await fetch('/api/notifications/test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              calendarId,
-              subscription: sub.toJSON(),
-            }),
-          });
-          if (res.ok) {
-            setIsSendingTest(false);
-            return;
+      if (typeof window !== 'undefined' && 'serviceWorker' in navigator && 'PushManager' in window) {
+        try {
+          const reg = await withTimeout(navigator.serviceWorker.ready, 2000);
+          let sub = await reg.pushManager.getSubscription();
+
+          // If no subscription yet, try to subscribe now
+          if (!sub && Notification.permission === 'granted') {
+            const vapidRes = await fetch('/api/notifications/vapid-key');
+            if (vapidRes.ok) {
+              const { publicKey } = await vapidRes.json();
+              if (publicKey) {
+                const applicationServerKey = urlBase64ToUint8Array(publicKey);
+                sub = await reg.pushManager.subscribe({
+                  userVisibleOnly: true,
+                  applicationServerKey,
+                });
+              }
+            }
           }
+
+          if (sub) {
+            setIsPushSubscribed(true);
+            const res = await fetch('/api/notifications/test', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                calendarId,
+                subscription: sub.toJSON(),
+              }),
+            });
+            if (res.ok) {
+              pushDelivered = true;
+            }
+          }
+        } catch (swErr) {
+          console.warn('SW test push notice:', swErr);
         }
       }
 
-      // Fallback to in-app / native Notification
-      addNotification({
-        title: '🌲 DailyForest Test Reminder',
-        message: 'Your notification system is working! You will receive task reminders right on time.',
-        type: 'reminder',
-      });
+      // If Web Push was not triggered/delivered or as local feedback, trigger in-app & native notification
+      if (!pushDelivered) {
+        addNotification({
+          title: 'DailyForest Test Reminder',
+          message: 'Your notification system is working! You will receive task reminders right on time.',
+          type: 'reminder',
+        });
+      }
     } catch (err) {
-      console.error('Test notification failed:', err);
+      console.error('Test notification error:', err);
       addNotification({
-        title: '🌲 DailyForest Test Reminder',
+        title: 'DailyForest Test Reminder',
         message: 'Your notification system is working! You will receive task reminders right on time.',
         type: 'reminder',
       });
