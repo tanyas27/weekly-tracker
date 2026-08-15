@@ -18,12 +18,20 @@ import {
   Trash2,
   Lock,
   ArrowUpRight,
+  CheckCircle2,
+  PlusCircle,
+  Copy,
+  Sparkles,
+  Layers,
+  Search,
 } from 'lucide-react'
 import { LogoBadge } from '@/components/LogoBadge'
 import {
   getRecentCalendars,
+  removeRecentCalendar,
   clearRecentCalendars,
   formatRelativeTime,
+  getLastActiveCalendarId,
   RecentCalendar,
 } from '@/lib/recent-calendars'
 
@@ -34,6 +42,8 @@ export default function LandingPage() {
   const [isMounted, setIsMounted] = useState(false)
   const [recentCalendars, setRecentCalendars] = useState<RecentCalendar[]>([])
   const [customCalendarId, setCustomCalendarId] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     setIsMounted(true)
@@ -43,8 +53,19 @@ export default function LandingPage() {
     } else {
       setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches)
     }
+
+    const isStandalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      (window.navigator as unknown as { standalone?: boolean }).standalone === true
+
+    const lastId = getLastActiveCalendarId()
+    if (isStandalone && lastId) {
+      router.replace(`/c/${lastId}`)
+      return
+    }
+
     setRecentCalendars(getRecentCalendars())
-  }, [])
+  }, [router])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -81,15 +102,44 @@ export default function LandingPage() {
   }
 
   const handleClearRecent = () => {
-    clearRecentCalendars()
-    setRecentCalendars([])
+    if (confirm('Clear all saved planners from this browser?')) {
+      clearRecentCalendars()
+      setRecentCalendars([])
+    }
+  }
+
+  const handleRemoveSingle = (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    removeRecentCalendar(id)
+    setRecentCalendars(getRecentCalendars())
+  }
+
+  const handleCopyLink = async (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : ''
+      await navigator.clipboard.writeText(`${origin}/c/${id}`)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId(null), 2000)
+    } catch {}
   }
 
   const handleOpenCustomCalendar = (e: React.FormEvent) => {
     e.preventDefault()
+    if (!customCalendarId.trim()) return
     const cleanId = parseCalendarId(customCalendarId)
     router.push(`/c/${cleanId}`)
   }
+
+  const activeCalendar = recentCalendars[0] || null
+  const filteredCalendars = searchQuery.trim()
+    ? recentCalendars.filter((c) => {
+        const title = c.title || `Planner #${c.id.slice(0, 6)}`
+        return title.toLowerCase().includes(searchQuery.toLowerCase()) || c.id.toLowerCase().includes(searchQuery.toLowerCase())
+      })
+    : recentCalendars
 
   return (
     <>
@@ -108,13 +158,13 @@ export default function LandingPage() {
                 DailyForest
               </span>
             </Link>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {isMounted && (
                 <button
                   type="button"
                   onClick={toggleTheme}
                   aria-label="Toggle theme"
-                  className={`p-1.5 rounded-full border transition-colors ${
+                  className={`p-1.5 rounded-full border transition-colors cursor-pointer ${
                     isDark
                       ? 'bg-zinc-800 border-white/10 text-yellow-400 hover:bg-zinc-700'
                       : 'bg-white border-black/10 text-zinc-600 hover:bg-zinc-50'
@@ -123,21 +173,35 @@ export default function LandingPage() {
                   {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                 </button>
               )}
-              <Link
-                href="/c/new"
-                className={`text-sm font-semibold transition-colors ${
-                  isDark ? 'text-[#BDCC8D] hover:text-[#d3e1c5]' : 'text-[#2D5F3E] hover:text-[#234b31]'
-                }`}
-              >
-                Open Planner →
-              </Link>
+              {activeCalendar ? (
+                <Link
+                  href={`/c/${activeCalendar.id}`}
+                  className={`inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-full border transition-all ${
+                    isDark
+                      ? 'bg-[#BDCC8D]/20 border-[#BDCC8D]/40 text-[#BDCC8D] hover:bg-[#BDCC8D]/30'
+                      : 'bg-emerald-50 border-emerald-200 text-[#2D5F3E] hover:bg-emerald-100'
+                  }`}
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Resume Planner</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/c/new"
+                  className={`text-sm font-semibold transition-colors ${
+                    isDark ? 'text-[#BDCC8D] hover:text-[#d3e1c5]' : 'text-[#2D5F3E] hover:text-[#234b31]'
+                  }`}
+                >
+                  Open Planner →
+                </Link>
+              )}
             </div>
           </div>
         </nav>
 
         {/* Hero */}
         <main>
-          <section className="relative pt-32 pb-16 sm:pt-40 sm:pb-20 px-5" aria-label="Hero">
+          <section className="relative pt-28 pb-10 sm:pt-36 sm:pb-16 px-5" aria-label="Hero">
             <div className="max-w-3xl mx-auto text-center">
               <h1 className={`text-[2.75rem] sm:text-6xl lg:text-7xl font-extrabold leading-[1.08] tracking-tight ${
                 isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
@@ -150,12 +214,94 @@ export default function LandingPage() {
                   like a warm notebook
                 </span>
               </h1>
-              <p className={`mt-5 text-lg sm:text-xl max-w-lg mx-auto leading-relaxed ${
+              <p className={`mt-4 text-base sm:text-xl max-w-lg mx-auto leading-relaxed ${
                 isDark ? 'text-zinc-400' : 'text-[#1a2e23]/60'
               }`}>
-                Free daily &amp; weekly planner. Time-block your schedule, share calendars, and work offline — beautifully.
+                Free daily &amp; weekly planner with live sync, time-blocking, and background push notifications.
               </p>
-              <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+
+              {/* Spotlight Active Calendar Card (Above Fold) */}
+              {isMounted && activeCalendar && (
+                <div className="mt-8 max-w-xl mx-auto">
+                  <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border shadow-xl backdrop-blur-xl transition-all text-left ${
+                    isDark
+                      ? 'bg-gradient-to-b from-zinc-900/95 to-zinc-900/80 border-[#BDCC8D]/30 shadow-black/50 ring-1 ring-[#BDCC8D]/20'
+                      : 'bg-gradient-to-b from-white/95 to-emerald-50/60 border-[#2D5F3E]/20 shadow-[0_12px_40px_rgba(45,95,62,0.12)] ring-1 ring-[#2D5F3E]/10'
+                  }`}>
+                    <div className="flex items-center justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider border ${
+                          isDark
+                            ? 'bg-[#BDCC8D]/15 text-[#BDCC8D] border-[#BDCC8D]/30'
+                            : 'bg-[#2D5F3E]/10 text-[#2D5F3E] border-[#2D5F3E]/20'
+                        }`}>
+                          <Sparkles className="w-3 h-3" /> Active Planner
+                        </span>
+                        {activeCalendar.isPrivate && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-500">
+                            <Lock className="w-3 h-3" /> Private
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[11px] opacity-60 font-mono">
+                        Active {formatRelativeTime(activeCalendar.lastVisited)}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <h2 className={`text-lg sm:text-xl font-black tracking-tight ${
+                          isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
+                        }`}>
+                          {activeCalendar.title && activeCalendar.title !== 'My Planner' && activeCalendar.title !== 'My Weekly Schedule'
+                            ? activeCalendar.title
+                            : `Planner #${activeCalendar.id.slice(0, 6)}`}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1 text-xs opacity-70">
+                          {activeCalendar.taskCount !== undefined && (
+                            <span>{activeCalendar.taskCount} task{activeCalendar.taskCount === 1 ? '' : 's'} scheduled</span>
+                          )}
+                          <span className="font-mono text-[11px]">ID: {activeCalendar.id.slice(0, 8)}...</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyLink(activeCalendar.id, e)}
+                          className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                            isDark
+                              ? 'bg-zinc-800 border-white/10 text-zinc-300 hover:bg-zinc-700'
+                              : 'bg-white border-black/10 text-zinc-700 hover:bg-zinc-50 shadow-xs'
+                          }`}
+                          title="Copy Planner Link"
+                        >
+                          {copiedId === activeCalendar.id ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        <Link
+                          href={`/c/${activeCalendar.id}`}
+                          className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer ${
+                            isDark
+                              ? 'bg-[#BDCC8D] text-zinc-950 hover:bg-[#c9d79c] shadow-[#BDCC8D]/20'
+                              : 'bg-[#2D5F3E] text-white hover:bg-[#245033] shadow-[#2D5F3E]/20'
+                          }`}
+                        >
+                          Resume Planner
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons Row */}
+              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <Link
                   href="/c/new"
                   className={`group inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full font-semibold text-base shadow-lg transition-all duration-200 active:scale-[0.98] whitespace-nowrap ${
@@ -164,6 +310,7 @@ export default function LandingPage() {
                       : 'bg-[#2D5F3E] text-white shadow-[#2D5F3E]/20 hover:bg-[#245033]'
                   }`}
                 >
+                  <PlusCircle className="w-4 h-4" />
                   Create new planner
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
@@ -202,58 +349,141 @@ export default function LandingPage() {
             </div>
           </section>
 
-          {/* Recent Planners / Open Recent */}
+          {/* Prominent Calendar Hub Grid */}
           {isMounted && recentCalendars.length > 0 && (
-            <section className="px-4 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4" aria-label="Recent Planners">
+            <section className="px-4 sm:px-6 pb-12 sm:pb-16 -mt-2 sm:-mt-4" aria-label="Calendar Hub">
               <div className="max-w-6xl mx-auto">
-                <div className={`p-4 sm:p-5 rounded-2xl border shadow-md backdrop-blur-md transition-colors ${
+                <div className={`p-5 sm:p-6 rounded-3xl border shadow-lg backdrop-blur-xl transition-colors ${
                   isDark ? 'bg-zinc-900/90 border-white/10 shadow-black/40' : 'bg-white/90 border-[#2D5F3E]/10 shadow-[0_8px_30px_rgba(45,95,62,0.06)]'
                 }`}>
-                  <div className={`flex items-center justify-between pb-3 mb-3 border-b ${
+                  <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b ${
                     isDark ? 'border-white/10' : 'border-black/[0.05]'
                   }`}>
-                    <div className="flex items-center gap-2">
-                      <Calendar className={`w-4 h-4 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
-                      <h2 className={`text-xs font-bold tracking-wider uppercase ${isDark ? 'text-zinc-300' : 'text-[#1a2e23]'}`}>
-                        Recent Planners
-                      </h2>
+                    <div className="flex items-center gap-2.5">
+                      <div className={`p-2 rounded-xl border ${
+                        isDark ? 'bg-[#BDCC8D]/15 border-[#BDCC8D]/30 text-[#BDCC8D]' : 'bg-[#2D5F3E]/10 border-[#2D5F3E]/20 text-[#2D5F3E]'
+                      }`}>
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h2 className={`text-base sm:text-lg font-bold tracking-tight ${isDark ? 'text-zinc-100' : 'text-[#1a2e23]'}`}>
+                          My Planners ({recentCalendars.length})
+                        </h2>
+                        <p className={`text-xs ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                          All active and recently accessed planners on this device
+                        </p>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleClearRecent}
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-md border transition-colors ${
-                        isDark
-                          ? 'text-zinc-400 border-white/10 hover:bg-zinc-800 hover:text-zinc-200'
-                          : 'text-zinc-500 border-black/10 hover:bg-zinc-50 hover:text-zinc-800'
-                      }`}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Clear
-                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {recentCalendars.length > 3 && (
+                        <div className={`relative flex items-center px-2.5 py-1 rounded-xl border text-xs ${
+                          isDark ? 'bg-zinc-800/80 border-white/10 text-zinc-200' : 'bg-[#FAF9F6] border-black/10 text-zinc-700'
+                        }`}>
+                          <Search className="w-3 h-3 opacity-50 mr-1.5" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Filter planners..."
+                            className="bg-transparent outline-none w-28 sm:w-36 text-xs"
+                          />
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleClearRecent}
+                        className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-xl border transition-colors cursor-pointer ${
+                          isDark
+                            ? 'text-zinc-400 border-white/10 hover:bg-zinc-800 hover:text-zinc-200'
+                            : 'text-zinc-500 border-black/10 hover:bg-zinc-50 hover:text-zinc-800'
+                        }`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Clear All
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {recentCalendars.map((item) => {
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                    {filteredCalendars.map((item, idx) => {
                       const displayName = item.title && item.title !== 'My Planner' && item.title !== 'My Weekly Schedule'
                         ? item.title
                         : `Planner #${item.id.slice(0, 6)}`
+                      const isFirst = idx === 0
                       return (
-                        <Link
+                        <div
                           key={item.id}
-                          href={`/c/${item.id}`}
-                          className={`group inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all hover:-translate-y-0.5 ${
+                          className={`group relative p-4 rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 ${
                             isDark
-                              ? 'bg-zinc-800/80 border-white/10 text-zinc-200 hover:bg-zinc-800 hover:border-[#BDCC8D]/50'
-                              : 'bg-[#FAF9F6] border-black/[0.06] text-[#1a2e23] hover:bg-white hover:border-[#2D5F3E]/30 shadow-xs'
+                              ? 'bg-zinc-800/60 hover:bg-zinc-800/90 border-white/10 hover:border-[#BDCC8D]/40 shadow-xs'
+                              : 'bg-[#FAF9F6] hover:bg-white border-black/[0.06] hover:border-[#2D5F3E]/30 shadow-xs'
                           }`}
                         >
-                          {item.isPrivate && <Lock className="w-3 h-3 text-amber-500 flex-shrink-0" />}
-                          <span>{displayName}</span>
-                          <span className="text-[10px] opacity-40 font-mono">• {formatRelativeTime(item.lastVisited)}</span>
-                          <ArrowUpRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 ${
-                            isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'
-                          }`} />
-                        </Link>
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-1.5 truncate">
+                              {item.isPrivate && <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                              <h3 className={`font-bold text-sm truncate ${isDark ? 'text-zinc-100' : 'text-[#1a2e23]'}`}>
+                                {displayName}
+                              </h3>
+                            </div>
+                            {isFirst && (
+                              <span className={`text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded-md border shrink-0 ${
+                                isDark ? 'bg-[#BDCC8D]/20 text-[#BDCC8D] border-[#BDCC8D]/30' : 'bg-[#2D5F3E]/10 text-[#2D5F3E] border-[#2D5F3E]/20'
+                              }`}>
+                                Last Active
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center justify-between text-[11px] opacity-60 mb-3 font-mono">
+                            <span>{item.taskCount !== undefined ? `${item.taskCount} tasks` : 'Active'}</span>
+                            <span>{formatRelativeTime(item.lastVisited)}</span>
+                          </div>
+
+                          <div className="flex items-center justify-between pt-2 border-t border-black/[0.04] dark:border-white/5">
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyLink(item.id, e)}
+                                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                  isDark ? 'border-white/10 hover:bg-zinc-700 text-zinc-300' : 'border-black/10 hover:bg-zinc-100 text-zinc-600'
+                                }`}
+                                title="Copy link"
+                              >
+                                {copiedId === item.id ? (
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={(e) => handleRemoveSingle(item.id, e)}
+                                className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                                  isDark ? 'border-white/10 hover:bg-rose-950/60 hover:text-rose-300 text-zinc-400' : 'border-black/10 hover:bg-rose-50 hover:text-rose-700 text-zinc-500'
+                                }`}
+                                title="Remove from list"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            <Link
+                              href={`/c/${item.id}`}
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-xl text-xs font-bold border transition-all ${
+                                isDark
+                                  ? 'bg-[#BDCC8D]/15 border-[#BDCC8D]/30 text-[#BDCC8D] hover:bg-[#BDCC8D]/30'
+                                  : 'bg-emerald-50 border-emerald-200 text-[#2D5F3E] hover:bg-emerald-100'
+                              }`}
+                            >
+                              <span>Open</span>
+                              <ArrowUpRight className="w-3 h-3 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                            </Link>
+                          </div>
+                        </div>
                       )
                     })}
                   </div>

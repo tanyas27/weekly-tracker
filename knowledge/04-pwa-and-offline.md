@@ -137,7 +137,26 @@ export default function RegisterSW() {
 
 ---
 
-## 5. iOS & Android Native Web App Metadata
+## 5. Background Web Push Notifications System
+
+DailyForest features a server-backed Web Push notification pipeline delivering task reminders even when the PWA is closed or running in the background:
+
+1. **VAPID Infrastructure (`lib/web-push.ts`):** Cryptographically signs push payloads sent to browser push endpoints (FCM, APNs).
+2. **Push Subscriptions Storage (`lib/db/index.ts`):** Stores browser endpoints and `p256dh`/`auth` keys in the `push_subscriptions` database table.
+3. **Service Worker Push Listener (`public/sw.js`):** Intercepts `push` events, creates vibration/notification banners, and handles `notificationclick` deep links into `/c/[calendarId]`.
+4. **Automated Reminder Cron (`app/api/cron/reminders`):** Periodically checks for upcoming tasks and dispatches push alerts to subscribed devices.
+
+---
+
+## 6. PWA Auto-Resumption & Navigation Logic
+
+- **Standalone Mode Detection:** `app/page.tsx` detects `(display-mode: standalone)` and `navigator.standalone`.
+- **Direct Calendar Resumption:** If an active planner ID is found in `localStorage`, the PWA instantly routes the user into `/c/[calendarId]`.
+- **In-App Quick Switcher:** The `Header` component includes a glassmorphic dropdown switcher to toggle between saved planners without returning to the home screen.
+
+---
+
+## 7. iOS & Android Native Web App Metadata
 
 Configured in `metadata` in [app/layout.tsx](../app/layout.tsx):
 - `appleWebApp`: Enables native iOS web application mode (`capable: true`, `statusBarStyle: "default"`).

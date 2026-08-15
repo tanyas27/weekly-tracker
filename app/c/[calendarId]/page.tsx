@@ -88,6 +88,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     drawerOpen,
     unreadCount,
     permissionStatus,
+    isPushSubscribed,
+    isSendingTest,
     setDrawerOpen,
     dismissToast,
     markAsRead,
@@ -95,6 +97,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     clearAllNotifications,
     updateSettings,
     requestNativePermission,
+    sendTestNotification,
     notifyTaskCompleted,
   } = useNotifications(tasks, calendarId)
 
@@ -121,12 +124,16 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         setIsDark(localStorage.getItem('theme') === 'dark')
         setIsMounted(true)
         if (calendarId) {
-          recordRecentCalendar(calendarId, 'My Planner', isPrivate)
+          recordRecentCalendar(calendarId, 'My Planner', isPrivate, {
+            taskCount: tasks.length,
+            completedCount: tasks.filter((t) => t.completed).length,
+            lastActiveWeek: selectedWeek,
+          })
         }
       }
     }, 0)
     return () => clearTimeout(timer)
-  }, [calendarId, isPrivate])
+  }, [calendarId, isPrivate, tasks.length, selectedWeek])
 
   useEffect(() => {
     if (isMounted && typeof window !== 'undefined') {
@@ -319,11 +326,14 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
         settings={settings}
         permissionStatus={permissionStatus}
         isDark={isDark}
+        isPushSubscribed={isPushSubscribed}
+        isSendingTest={isSendingTest}
         onUpdateSettings={updateSettings}
         onMarkAsRead={markAsRead}
         onMarkAllAsRead={markAllAsRead}
         onClearAll={clearAllNotifications}
         onRequestNativePermission={requestNativePermission}
+        onSendTestNotification={sendTestNotification}
       />
 
       <div className="max-w-7xl mx-auto relative z-10">

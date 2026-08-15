@@ -247,3 +247,135 @@ export async function updateCalendarPrivacy(calendarId: string, isPrivate: boole
     return false;
   }
 }
+
+export interface PushSubscriptionRow {
+  id: string;
+  calendar_id: string | null;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
+  last_active_at: string;
+}
+
+let hasInitializedPushTable = false;
+export async function ensurePushTableExists() {
+  if (hasInitializedPushTable) return;
+  const sql = getSql();
+  if (!sql) return;
+  try {
+    await sql`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id VARCHAR(64) PRIMARY KEY,
+        calendar_id VARCHAR(64) REFERENCES calendars(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `;
+    await sql`
+      CREATE INDEX IF NOT EXISTS idx_push_subs_calendar_id ON push_subscriptions(calendar_id);
+    `;
+    hasInitializedPushTable = true;
+  } catch (error) {
+    console.error('Failed to ensure push_subscriptions table:', error);
+  }
+}
+
+export async function savePushSubscription(sub: {
+  calendarId?: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+}): Promise<PushSubscriptionRow | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    await ensurePushTableExists();
+    if (sub.calendarId) {
+      await createCalendar(sub.calendarId);
+    }
+    const id = nanoid(16);
+    const rows = await sql`
+      INSERT INTO push_subscriptions (id, calendar_id, endpoint, p256dh, auth, updated_at, last_active_at)
+      VALUES (${id}, ${sub.calendarId || null}, ${sub.endpoint}, ${sub.p256dh}, ${sub.auth}, NOW(), NOW())
+      ON CONFLICT (endpoint) DO UPDATE SET
+        calendar_id = COALESCE(EXCLUDED.calendar_id, push_subscriptions.calendar_id),
+        p256dh = EXCLUDED.p256dh,
+        auth = EXCLUDED.auth,
+        last_active_at = NOW()
+      RETURNING id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+    `;
+    return (rows[0] as PushSubscriptionRow) || null;
+  } catch (error) {
+    // If column updated_at does not exist, retry standard conflict
+    try {
+      const id = nanoid(16);
+      const rows = await sql`
+        INSERT INTO push_subscriptions (id, calendar_id, endpoint, p256dh, auth, last_active_at)
+        VALUES (${id}, ${sub.calendarId || null}, ${sub.endpoint}, ${sub.p256dh}, ${sub.auth}, NOW())
+        ON CONFLICT (endpoint) DO UPDATE SET
+          calendar_id = COALESCE(EXCLUDED.calendar_id, push_subscriptions.calendar_id),
+          p256dh = EXCLUDED.p256dh,
+          auth = EXCLUDED.auth,
+          last_active_at = NOW()
+        RETURNING id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+      `;
+      return (rows[0] as PushSubscriptionRow) || null;
+    } catch (retryError) {
+      console.error('Database savePushSubscription error:', retryError);
+      return null;
+    }
+  }
+}
+
+export async function removePushSubscription(endpoint: string): Promise<boolean> {
+  const sql = getSql();
+  if (!sql) return false;
+  try {
+    await ensurePushTableExists();
+    await sql`
+      DELETE FROM push_subscriptions
+      WHERE endpoint = ${endpoint}
+    `;
+    return true;
+  } catch (error) {
+    console.error('Database removePushSubscription error:', error);
+    return false;
+  }
+}
+
+export async function getSubscriptionsForCalendar(calendarId: string): Promise<PushSubscriptionRow[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    await ensurePushTableExists();
+    const rows = await sql`
+      SELECT id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+      FROM push_subscriptions
+      WHERE calendar_id = ${calendarId}
+    `;
+    return (rows as PushSubscriptionRow[]) || [];
+  } catch (error) {
+    console.error('Database getSubscriptionsForCalendar error:', error);
+    return [];
+  }
+}
+
+export async function getAllPushSubscriptions(): Promise<PushSubscriptionRow[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    await ensurePushTableExists();
+    const rows = await sql`
+      SELECT id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+      FROM push_subscriptions
+    `;
+    return (rows as PushSubscriptionRow[]) || [];
+  } catch (error) {
+    console.error('Database getAllPushSubscriptions error:', error);
+    return [];
+  }
+}

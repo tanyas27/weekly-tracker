@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-08-15 - PWA Resumption, Homepage Calendar Hub, In-App Switcher & Web Push Notifications
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Implemented PWA standalone mode auto-resumption to launch directly into the active calendar. Added prominent "Active Planner" hero spotlight card and rich "My Planners" calendar hub grid on homepage (`app/page.tsx`) with search, task count previews, and copy link actions. Added in-app Quick Calendar Switcher dropdown to `components/Header.tsx`. Built server-backed Web Push background notification pipeline (`web-push`, `lib/web-push.ts`, `lib/db`, `/api/notifications/*`, `/api/cron/reminders`, `public/sw.js`) enabling push reminders when the app is closed or backgrounded. Updated `knowledge/04-pwa-and-offline.md`.
+
 ### 2026-08-11 - DailyForest SEO Overhaul & Rebrand
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.6 Flash)
 - **Verifier:** daman

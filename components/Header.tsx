@@ -1,7 +1,22 @@
-import React, { useState } from 'react'
+'use client'
+
+import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { nanoid } from 'nanoid'
-import { Share2, PlusCircle, Lock, Calendar, Globe, Bell } from 'lucide-react'
+import {
+  Share2,
+  PlusCircle,
+  Lock,
+  Calendar,
+  Globe,
+  Bell,
+  ChevronDown,
+  Check,
+  Home,
+  Layers,
+} from 'lucide-react'
+import { getRecentCalendars, RecentCalendar, formatRelativeTime } from '@/lib/recent-calendars'
 
 export interface SessionInfo {
   id: string;
@@ -60,6 +75,25 @@ export function Header({
 }: HeaderProps) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [savedCalendars, setSavedCalendars] = useState<RecentCalendar[]>([])
+  const switcherRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setSavedCalendars(getRecentCalendars())
+  }, [calendarId, switcherOpen])
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (switcherRef.current && !switcherRef.current.contains(event.target as Node)) {
+        setSwitcherOpen(false)
+      }
+    }
+    if (switcherOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [switcherOpen])
 
   const roundedProgress = Math.round(progressPercentage)
   const strokeDashArray = `${(progressPercentage / 100) * 100.53} 100.53`
@@ -82,6 +116,14 @@ export function Header({
   const diff = currentMonday.getDate() - day + (day === 0 ? -6 : 1)
   const thisWeekMondayStr = new Date(currentMonday.setDate(diff)).toISOString().split('T')[0]
 
+  const currentCalendarInfo = savedCalendars.find((c) => c.id === calendarId)
+  const calendarDisplayName =
+    currentCalendarInfo?.title && currentCalendarInfo.title !== 'My Planner' && currentCalendarInfo.title !== 'My Weekly Schedule'
+      ? currentCalendarInfo.title
+      : calendarId
+      ? `Planner #${calendarId.slice(0, 6)}`
+      : 'Planner'
+
   return (
     <div className="flex flex-col gap-3.5 mb-4 sm:mb-6">
       {/* Top Header Row */}
@@ -90,12 +132,113 @@ export function Header({
         {/* Left Side: Month Title & Status Badges */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <div className="flex items-center justify-between sm:justify-start gap-3">
-            {/* Month Title (Original Bold Sans-Serif Font) */}
+            {/* Month Title */}
             <h1 className={`text-2xl sm:text-3xl md:text-4xl font-black font-sans tracking-tight whitespace-nowrap ${
               isDark ? 'text-zinc-100' : 'text-[#1a2e23]'
             }`}>
               {monthYear}
             </h1>
+
+            {/* Quick Calendar Switcher Pill */}
+            <div className="relative" ref={switcherRef}>
+              <button
+                type="button"
+                onClick={() => setSwitcherOpen((prev) => !prev)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs backdrop-blur-md transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-zinc-800/90 border-white/15 text-zinc-200 hover:border-[#BDCC8D]/50'
+                    : 'bg-white/90 border-black/10 text-[#1a2e23] hover:border-[#2D5F3E]/40'
+                }`}
+                aria-label="Switch calendar"
+                aria-expanded={switcherOpen}
+              >
+                <Layers className={`w-3.5 h-3.5 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
+                <span className="max-w-[110px] sm:max-w-[140px] truncate">{calendarDisplayName}</span>
+                <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${switcherOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Switcher Dropdown Menu */}
+              {switcherOpen && (
+                <div
+                  className={`absolute left-0 top-full mt-2 w-64 p-2 rounded-2xl border shadow-xl backdrop-blur-xl z-50 transition-all ${
+                    isDark
+                      ? 'bg-zinc-900/95 border-white/15 shadow-black/60 text-zinc-100'
+                      : 'bg-white/95 border-black/10 shadow-emerald-950/10 text-zinc-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-black/5 dark:border-white/10 mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
+                      My Planners
+                    </span>
+                    <Link
+                      href="/"
+                      onClick={() => setSwitcherOpen(false)}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-[#BDCC8D] hover:underline flex items-center gap-1"
+                    >
+                      <Home className="w-3 h-3" /> Hub
+                    </Link>
+                  </div>
+
+                  <div className="max-h-56 overflow-y-auto space-y-1 py-1">
+                    {savedCalendars.map((c) => {
+                      const isCurrent = c.id === calendarId
+                      const name =
+                        c.title && c.title !== 'My Planner' && c.title !== 'My Weekly Schedule'
+                          ? c.title
+                          : `Planner #${c.id.slice(0, 6)}`
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSwitcherOpen(false)
+                            if (!isCurrent) {
+                              router.push(`/c/${c.id}`)
+                            }
+                          }}
+                          className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                            isCurrent
+                              ? isDark
+                                ? 'bg-emerald-950/60 text-emerald-300 font-bold'
+                                : 'bg-emerald-50 text-[#2D5F3E] font-bold'
+                              : isDark
+                              ? 'hover:bg-zinc-800 text-zinc-300'
+                              : 'hover:bg-zinc-100 text-zinc-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            {c.isPrivate && <Lock className="w-3 h-3 text-amber-500 shrink-0" />}
+                            <span className="truncate">{name}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[10px] opacity-40">{formatRelativeTime(c.lastVisited)}</span>
+                            {isCurrent && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  <div className="pt-1.5 border-t border-black/5 dark:border-white/10 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSwitcherOpen(false)
+                        handleNewCalendar()
+                      }}
+                      className={`w-full text-center py-1.5 px-3 rounded-xl text-xs font-bold border transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                        isDark
+                          ? 'bg-zinc-800 border-white/10 text-[#BDCC8D] hover:bg-zinc-700'
+                          : 'bg-emerald-50 border-emerald-200/80 text-[#2D5F3E] hover:bg-emerald-100'
+                      }`}
+                    >
+                      <PlusCircle className="w-3.5 h-3.5" />
+                      Create New Planner
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Notification Bell */}
             <div className="flex items-center gap-1.5 lg:hidden">
