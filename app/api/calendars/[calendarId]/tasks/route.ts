@@ -98,6 +98,7 @@ export async function POST(
       completedDays: task.completedDays,
       days: task.days,
       color: task.color,
+      reminderOffset: task.reminderOffset,
     });
 
     broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });

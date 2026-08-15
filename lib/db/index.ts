@@ -31,6 +31,7 @@ export interface TaskRow {
   completed_days: string[];
   days: string[];
   color: string;
+  reminder_offset?: number | null;
   updated_at: string;
 }
 
@@ -40,6 +41,21 @@ function getSql() {
     return null;
   }
   return neon(connectionString);
+}
+
+let hasInitializedTasksTable = false;
+export async function ensureTasksSchema() {
+  if (hasInitializedTasksTable) return;
+  const sql = getSql();
+  if (!sql) return;
+  try {
+    await sql`
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_offset INTEGER;
+    `;
+    hasInitializedTasksTable = true;
+  } catch (error) {
+    console.error('Failed to ensure tasks schema:', error);
+  }
 }
 
 export function sanitizeTaskName(name: string): string {
@@ -140,8 +156,9 @@ export async function getTasksForSession(sessionId: string): Promise<TaskRow[]> 
   const sql = getSql();
   if (!sql) return [];
   try {
+    await ensureTasksSchema();
     const rows = await sql`
-      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, updated_at
+      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at
       FROM tasks
       WHERE session_id = ${sessionId}::uuid
       ORDER BY start_hour ASC
@@ -166,22 +183,25 @@ export async function upsertTask(task: {
   completedDays?: string[];
   days: string[];
   color: string;
+  reminderOffset?: number | null;
 }): Promise<TaskRow | null> {
   const sql = getSql();
   if (!sql) return null;
   try {
+    await ensureTasksSchema();
     const taskId = task.id || nanoid(16);
     const cleanName = sanitizeTaskName(task.name);
     const completedDays = task.completedDays || [];
     const isCompleted = task.completed ?? (completedDays.length === task.days.length && task.days.length > 0);
+    const reminderOffset = task.reminderOffset !== undefined ? task.reminderOffset : null;
 
     const rows = await sql`
       INSERT INTO tasks (
-        id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, updated_at
+        id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at
       )
       VALUES (
         ${taskId}, ${task.calendarId}, ${task.sessionId}::uuid, ${cleanName}, ${task.startTime}, ${task.endTime},
-        ${task.startHour}, ${task.duration}, ${isCompleted}, ${completedDays}, ${task.days}, ${task.color}, NOW()
+        ${task.startHour}, ${task.duration}, ${isCompleted}, ${completedDays}, ${task.days}, ${task.color}, ${reminderOffset}, NOW()
       )
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
@@ -193,8 +213,9 @@ export async function upsertTask(task: {
         completed_days = EXCLUDED.completed_days,
         days = EXCLUDED.days,
         color = EXCLUDED.color,
+        reminder_offset = EXCLUDED.reminder_offset,
         updated_at = NOW()
-      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, updated_at
+      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at
     `;
     return (rows[0] as TaskRow) || null;
   } catch (error) {
@@ -238,7 +259,8 @@ export async function copySessionTasks(calendarId: string, sourceSessionId: stri
         completed: false,
         completedDays: [],
         days: st.days,
-        color: st.color
+        color: st.color,
+        reminderOffset: st.reminder_offset !== undefined && st.reminder_offset !== null ? Number(st.reminder_offset) : undefined,
       });
       if (inserted) {
         createdTasks.push(inserted);
@@ -291,6 +313,7 @@ export interface PushSubscriptionRow {
   endpoint: string;
   p256dh: string;
   auth: string;
+  timezone?: string;
   created_at: string;
   last_active_at: string;
 }
@@ -308,9 +331,13 @@ export async function ensurePushTableExists() {
         endpoint TEXT NOT NULL UNIQUE,
         p256dh TEXT NOT NULL,
         auth TEXT NOT NULL,
+        timezone TEXT DEFAULT 'UTC',
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         last_active_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `;
+    await sql`
+      ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'UTC';
     `;
     await sql`
       CREATE INDEX IF NOT EXISTS idx_push_subs_calendar_id ON push_subscriptions(calendar_id);
@@ -326,6 +353,7 @@ export async function savePushSubscription(sub: {
   endpoint: string;
   p256dh: string;
   auth: string;
+  timezone?: string;
 }): Promise<PushSubscriptionRow | null> {
   const sql = getSql();
   if (!sql) return null;
@@ -335,36 +363,22 @@ export async function savePushSubscription(sub: {
       await createCalendar(sub.calendarId);
     }
     const id = nanoid(16);
+    const userTz = sub.timezone || 'UTC';
     const rows = await sql`
-      INSERT INTO push_subscriptions (id, calendar_id, endpoint, p256dh, auth, updated_at, last_active_at)
-      VALUES (${id}, ${sub.calendarId || null}, ${sub.endpoint}, ${sub.p256dh}, ${sub.auth}, NOW(), NOW())
+      INSERT INTO push_subscriptions (id, calendar_id, endpoint, p256dh, auth, timezone, last_active_at)
+      VALUES (${id}, ${sub.calendarId || null}, ${sub.endpoint}, ${sub.p256dh}, ${sub.auth}, ${userTz}, NOW())
       ON CONFLICT (endpoint) DO UPDATE SET
         calendar_id = COALESCE(EXCLUDED.calendar_id, push_subscriptions.calendar_id),
         p256dh = EXCLUDED.p256dh,
         auth = EXCLUDED.auth,
+        timezone = COALESCE(EXCLUDED.timezone, push_subscriptions.timezone),
         last_active_at = NOW()
-      RETURNING id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+      RETURNING id, calendar_id, endpoint, p256dh, auth, timezone, created_at, last_active_at
     `;
     return (rows[0] as PushSubscriptionRow) || null;
-  } catch {
-    // If column updated_at does not exist, retry standard conflict
-    try {
-      const id = nanoid(16);
-      const rows = await sql`
-        INSERT INTO push_subscriptions (id, calendar_id, endpoint, p256dh, auth, last_active_at)
-        VALUES (${id}, ${sub.calendarId || null}, ${sub.endpoint}, ${sub.p256dh}, ${sub.auth}, NOW())
-        ON CONFLICT (endpoint) DO UPDATE SET
-          calendar_id = COALESCE(EXCLUDED.calendar_id, push_subscriptions.calendar_id),
-          p256dh = EXCLUDED.p256dh,
-          auth = EXCLUDED.auth,
-          last_active_at = NOW()
-        RETURNING id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
-      `;
-      return (rows[0] as PushSubscriptionRow) || null;
-    } catch (retryError) {
-      console.error('Database savePushSubscription error:', retryError);
-      return null;
-    }
+  } catch (err) {
+    console.error('Database savePushSubscription error:', err);
+    return null;
   }
 }
 
@@ -390,7 +404,7 @@ export async function getSubscriptionsForCalendar(calendarId: string): Promise<P
   try {
     await ensurePushTableExists();
     const rows = await sql`
-      SELECT id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+      SELECT id, calendar_id, endpoint, p256dh, auth, timezone, created_at, last_active_at
       FROM push_subscriptions
       WHERE calendar_id = ${calendarId}
     `;
@@ -407,7 +421,7 @@ export async function getAllPushSubscriptions(): Promise<PushSubscriptionRow[]> 
   try {
     await ensurePushTableExists();
     const rows = await sql`
-      SELECT id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
+      SELECT id, calendar_id, endpoint, p256dh, auth, timezone, created_at, last_active_at
       FROM push_subscriptions
     `;
     return (rows as PushSubscriptionRow[]) || [];

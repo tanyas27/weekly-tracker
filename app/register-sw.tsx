@@ -19,7 +19,7 @@ export default function RegisterSW() {
         if ('caches' in window) {
           caches.keys().then((keys) => {
             keys.forEach((key) => {
-              if (key !== 'dailyforest-v4') {
+              if (key !== 'dailyforest-v5') {
                 caches.delete(key)
               }
             })

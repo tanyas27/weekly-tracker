@@ -1,0 +1,27 @@
+name: Background Reminders Dispatcher
+
+on:
+  schedule:
+    # Triggers every 5 minutes automatically via GitHub Actions
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+jobs:
+  dispatch-reminders:
+    name: Ping Reminder Endpoint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Trigger Reminders Endpoint
+        run: |
+          echo "Triggering DailyForest Reminders..."
+          # Loop 5 times (once every 60 seconds) within the 5-minute GitHub Actions run
+          for i in {1..5}; do
+            echo "Tick $i: $(date -u)"
+            curl -s -f "https://dailyforest.vercel.app/api/cron/reminders" || true
+            if [ $i -lt 5 ]; then
+              sleep 60
+            fi
+          done
+          echo "Completed reminder cycle."

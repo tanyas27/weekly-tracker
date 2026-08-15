@@ -79,6 +79,7 @@ export async function GET(
       completedDays: t.completed_days || [],
       days: t.days || [],
       color: t.color,
+      reminderOffset: t.reminder_offset !== undefined && t.reminder_offset !== null ? Number(t.reminder_offset) : undefined,
     }));
 
     return NextResponse.json(

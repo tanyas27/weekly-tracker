@@ -57,7 +57,7 @@ export function getDueReminders(
 
     const leadTime = task.reminderOffset !== undefined ? task.reminderOffset : defaultLeadTime
     const targetTriggerMinute = taskStartTotalMinutes - leadTime
-    const reminderKey = `${task.id}_${currentDayShort}_${currentDateStr}_${leadTime}`
+    const reminderKey = `${task.id}_${currentDayShort}_${currentDateStr}_${task.startTime || '09:00'}_${leadTime}`
 
     const isDue =
       currentMinutesFromMidnight >= targetTriggerMinute &&

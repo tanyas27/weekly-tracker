@@ -2,13 +2,20 @@ import webpush from 'web-push';
 
 const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || 'BEcROGAlhIRQoDRls8OLvWyBOCHOp4-bgOIigzPrBl1KuTq70aL9e68KRGF_RTrPhC2olLKQ8p54hzDGUPLTXN4';
 const privateKey = process.env.VAPID_PRIVATE_KEY || '2QsUyuleFFbv_MmpJ46T6sW7wUX224xLyX-3_2hUJuc';
-const subject = process.env.VAPID_SUBJECT || 'mailto:support@dailyforest.app';
-
-try {
-  webpush.setVapidDetails(subject, publicKey, privateKey);
-} catch (err) {
-  console.error('Error configuring web-push VAPID details:', err);
+let subject = process.env.VAPID_SUBJECT || 'mailto:support@dailyforest.app';
+if (!subject.startsWith('mailto:') && !subject.startsWith('http://') && !subject.startsWith('https://')) {
+  subject = `mailto:${subject}`;
 }
+
+function ensureVapidConfig() {
+  try {
+    webpush.setVapidDetails(subject, publicKey, privateKey);
+  } catch (err) {
+    console.error('Error configuring web-push VAPID details:', err);
+  }
+}
+
+ensureVapidConfig();
 
 export function getPublicVapidKey(): string {
   return publicKey;
@@ -36,6 +43,7 @@ export async function sendWebPushNotification(
   payload: PushPayload
 ): Promise<{ success: boolean; error?: string; statusCode?: number }> {
   try {
+    ensureVapidConfig();
     const pushSubscription = {
       endpoint: subscription.endpoint,
       keys: {

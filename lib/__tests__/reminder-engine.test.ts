@@ -69,8 +69,17 @@ describe('getDueReminders', () => {
   it('skips reminders already sent', () => {
     const now = new Date('2026-08-11T08:50:00')
     const task = makeTask()
-    const reminderKey = `${task.id}_MON_${now.toDateString()}_10`
+    const reminderKey = `${task.id}_MON_${now.toDateString()}_${task.startTime}_10`
     expect(getDueReminders([task], 'MON', now, 10, new Set([reminderKey]))).toHaveLength(0)
+  })
+
+  it('fires reminder when event time is updated to a later time after earlier reminder was sent', () => {
+    const now = new Date('2026-08-11T13:50:00') // 10 min before new 14:00 slot
+    const oldReminderKey = `1_MON_${now.toDateString()}_09:00_10`
+    const updatedTask = makeTask({ startTime: '14:00', endTime: '15:00', startHour: 14 })
+    const due = getDueReminders([updatedTask], 'MON', now, 10, new Set([oldReminderKey]))
+    expect(due).toHaveLength(1)
+    expect(due[0].task.startTime).toBe('14:00')
   })
 
   it('ignores tasks not scheduled for the given day', () => {

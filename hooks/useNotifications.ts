@@ -85,6 +85,7 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
           body: JSON.stringify({
             subscription: sub.toJSON(),
             calendarId: currentCalendarId || undefined,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
           }),
         });
         return true;
@@ -102,6 +103,14 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
       if (typeof window !== 'undefined' && 'Notification' in window) {
         setPermissionStatus(Notification.permission);
         if (Notification.permission === 'granted') {
+          setSettings((prev) => {
+            if (!prev.nativeNotificationsEnabled) {
+              const updated = { ...prev, nativeNotificationsEnabled: true };
+              saveStoredSettings(updated);
+              return updated;
+            }
+            return prev;
+          });
           syncPushSubscription(calendarId);
         }
       } else if (typeof window !== 'undefined') {
@@ -159,20 +168,44 @@ export function useNotifications(tasks: Task[], calendarId?: string) {
       }
 
       // Native Browser push/notification
-      if (
-        settings.nativeNotificationsEnabled &&
+      const hasNativePermission =
         typeof window !== 'undefined' &&
         'Notification' in window &&
-        Notification.permission === 'granted'
-      ) {
-        try {
-          new Notification(notification.title, {
-            body: notification.message,
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
-          });
-        } catch (err) {
-          console.error('Failed to trigger native notification', err);
+        Notification.permission === 'granted' &&
+        settings.enabled;
+
+      if (hasNativePermission) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.ready
+            .then((reg) => {
+              return reg.showNotification(notification.title, {
+                body: notification.message,
+                icon: '/icon-192.png',
+                badge: '/icon-192.png',
+                data: { url: window.location.pathname },
+              });
+            })
+            .catch(() => {
+              try {
+                new Notification(notification.title, {
+                  body: notification.message,
+                  icon: '/icon-192.png',
+                  badge: '/icon-192.png',
+                });
+              } catch (e) {
+                console.warn('Native notification fallback notice:', e);
+              }
+            });
+        } else {
+          try {
+            new Notification(notification.title, {
+              body: notification.message,
+              icon: '/icon-192.png',
+              badge: '/icon-192.png',
+            });
+          } catch (err) {
+            console.error('Failed to trigger native notification', err);
+          }
         }
       }
     },

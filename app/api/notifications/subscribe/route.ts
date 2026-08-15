@@ -4,7 +4,7 @@ import { savePushSubscription, removePushSubscription } from '@/lib/db';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { subscription, calendarId } = body;
+    const { subscription, calendarId, timezone } = body;
 
     if (!subscription || !subscription.endpoint || !subscription.keys) {
       return NextResponse.json(
@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       endpoint,
       p256dh,
       auth,
+      timezone: typeof timezone === 'string' && timezone.trim() ? timezone.trim() : 'UTC',
     });
 
     return NextResponse.json({ success: true, record: saved });
