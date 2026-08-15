@@ -4,8 +4,8 @@
  * hooks/useNotifications.ts and lib/notification-storage.ts.
  */
 
-// Schedule grid: the timeline starts at 7 AM, one row per hour, 80px tall.
-export const START_HOUR = 7
+// Schedule grid: the timeline starts at 12 AM (00:00), 24 hourly rows, 80px tall.
+export const START_HOUR = 0
 export const SLOT_HEIGHT_PX = 80
 
 // Notifications: how often the reminder/daily-summary check runs, and storage caps.

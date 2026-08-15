@@ -48,9 +48,11 @@ export function getDueReminders(
     if (!task.days.includes(currentDayShort)) continue
     if (task.reminderOffset === null) continue // Notification explicitly disabled for this task
 
-    const [startHStr, startMStr] = (task.startTime || '07:00').split(':')
-    const startHour = parseInt(startHStr, 10) || 7
-    const startMin = parseInt(startMStr, 10) || 0
+    const [startHStr, startMStr] = (task.startTime || '09:00').split(':')
+    const parsedH = parseInt(startHStr, 10)
+    const startHour = isNaN(parsedH) ? 0 : parsedH
+    const parsedM = parseInt(startMStr, 10)
+    const startMin = isNaN(parsedM) ? 0 : parsedM
     const taskStartTotalMinutes = startHour * 60 + startMin
 
     const leadTime = task.reminderOffset !== undefined ? task.reminderOffset : defaultLeadTime

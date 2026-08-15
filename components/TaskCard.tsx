@@ -11,6 +11,7 @@ interface TaskCardProps {
     colWidthPercent: number
     leftPercent: number
   }
+  baselineStartHour?: number
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
   onOpenEditModal: (task: Task) => void
 }
@@ -20,10 +21,11 @@ export const TaskCard = React.memo(function TaskCard({
   task,
   dayShort,
   overlapLayout,
+  baselineStartHour = 0,
   onToggleComplete,
   onOpenEditModal
 }: TaskCardProps) {
-  const { top, height } = getTaskPosition(task.startHour, task.duration)
+  const { top, height } = getTaskPosition(task.startHour, task.duration, baselineStartHour)
   const { totalOverlaps, overlapIndex, colWidthPercent, leftPercent } = overlapLayout
 
   const rotations = ['-rotate-1', 'rotate-1', '-rotate-2', 'rotate-2', 'rotate-0']

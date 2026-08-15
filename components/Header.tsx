@@ -15,8 +15,10 @@ import {
   Check,
   Home,
   Layers,
+  Clock,
 } from 'lucide-react'
 import { getRecentCalendars, RecentCalendar, formatRelativeTime } from '@/lib/recent-calendars'
+import { ActiveHoursPreference, formatHourRangeLabel } from '@/lib/time-utils'
 
 export interface SessionInfo {
   id: string;
@@ -42,6 +44,8 @@ interface HeaderProps {
   isPrivate?: boolean
   onOpenPrivacySettings?: () => void
   onLockCalendar?: () => void
+  activeHours?: ActiveHoursPreference
+  onOpenActiveHours?: () => void
 }
 
 function formatWeekLabel(rawDateStr: string): string {
@@ -72,6 +76,8 @@ export function Header({
   isPrivate = false,
   onOpenPrivacySettings,
   onLockCalendar,
+  activeHours,
+  onOpenActiveHours,
 }: HeaderProps) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
@@ -352,6 +358,23 @@ export function Header({
                     <span>Public</span>
                   </>
                 )}
+              </button>
+            )}
+
+            {/* Active Hours Preference Pill */}
+            {onOpenActiveHours && (
+              <button
+                type="button"
+                onClick={onOpenActiveHours}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md shadow-2xs transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-zinc-800/80 border-white/10 text-zinc-200 hover:border-[#BDCC8D]/50 hover:bg-zinc-700'
+                    : 'bg-white/90 border-black/10 text-[#1a2e23] hover:border-[#2D5F3E]/40 hover:bg-zinc-50'
+                }`}
+                title="Customize timeline active hours"
+              >
+                <Clock className={`w-3.5 h-3.5 ${isDark ? 'text-[#BDCC8D]' : 'text-[#2D5F3E]'}`} />
+                <span>{activeHours ? formatHourRangeLabel(activeHours.startHour, activeHours.endHour) : 'Active Hours'}</span>
               </button>
             )}
           </div>

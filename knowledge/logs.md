@@ -31,6 +31,18 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-08-15 - Active Hours Timeline Preference & Empty Row Filtering
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Implemented user-customizable Active Hours preference (`ActiveHoursPreference`, `ActiveHoursModal.tsx`) with presets (Early Bird 4 AM – 10 PM, Standard Day 6 AM – 11 PM, Workday 8 AM – 7 PM, Night Owl, Full 24h) and custom range pickers. Added dynamic timeline row rendering in `ScheduleGrid.tsx` to hide unused empty hours, with intelligent automatic range expansion to ensure any scheduled task is always visible. Added Active Hours pill button in `Header.tsx`, updated task positioning in `TaskCard.tsx`, added Vitest unit tests in `lib/__tests__/time-utils.test.ts`, and updated `knowledge/02-data-models-and-state.md`.
+
+### 2026-08-15 - 24-Hour Timeline Expansion & Early Morning Scheduling (4 AM & Midnight)
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Expanded schedule grid timeline from 7 AM baseline to full 24-hour day starting from 12:00 AM (00:00) (`START_HOUR = 0`). Updated `TIME_SLOTS` in `lib/time-utils.ts` and `lib/constants.ts` to include 00:00 through 23:00. Fixed time parsing in `lib/reminder-engine.ts` to properly handle `00:00` and early hours without defaulting to 7. Updated `openAddModal` in `app/c/[calendarId]/page.tsx` and unit tests in `lib/__tests__/time-utils.test.ts`. Updated `knowledge/02-data-models-and-state.md`.
+
 ### 2026-08-15 - PWA Resumption, Homepage Calendar Hub, In-App Switcher & Web Push Notifications
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
 - **Verifier:** daman
