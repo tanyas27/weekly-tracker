@@ -15,6 +15,8 @@ import {
   Check,
   Home,
   Clock,
+  Pencil,
+  X,
 } from 'lucide-react'
 import { getRecentCalendars, RecentCalendar, formatRelativeTime } from '@/lib/recent-calendars'
 import {
@@ -40,6 +42,8 @@ interface HeaderProps {
   unreadNotificationsCount?: number
   onOpenNotifications?: () => void
   calendarId?: string
+  calendarTitle?: string
+  onUpdateCalendarTitle?: (title: string) => Promise<boolean>
   sessions?: SessionInfo[]
   selectedWeek?: string
   onSelectWeek?: (week: string) => void
@@ -71,6 +75,8 @@ export function Header({
   unreadNotificationsCount = 0,
   onOpenNotifications,
   calendarId,
+  calendarTitle,
+  onUpdateCalendarTitle,
   sessions = [],
   selectedWeek,
   onSelectWeek,
@@ -89,8 +95,14 @@ export function Header({
   const [savedCalendars, setSavedCalendars] = useState<RecentCalendar[]>([])
   const switcherRef = useRef<HTMLDivElement>(null)
 
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editTitleValue, setEditTitleValue] = useState('')
+  const [isSubmittingTitle, setIsSubmittingTitle] = useState(false)
+
   useEffect(() => {
-    setSavedCalendars(getRecentCalendars())
+    queueMicrotask(() => {
+      setSavedCalendars(getRecentCalendars())
+    })
   }, [calendarId, switcherOpen])
 
   useEffect(() => {
@@ -121,6 +133,17 @@ export function Header({
     router.push(`/c/${newCalendarId}`)
   }
 
+  const handleTitleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editTitleValue.trim() || !onUpdateCalendarTitle) return
+    setIsSubmittingTitle(true)
+    const success = await onUpdateCalendarTitle(editTitleValue.trim())
+    setIsSubmittingTitle(false)
+    if (success !== false) {
+      setIsEditingTitle(false)
+    }
+  }
+
   const currentMonday = new Date()
   const day = currentMonday.getDay()
   const diff = currentMonday.getDate() - day + (day === 0 ? -6 : 1)
@@ -128,11 +151,13 @@ export function Header({
 
   const currentCalendarInfo = savedCalendars.find((c) => c.id === calendarId)
   const calendarDisplayName =
-    currentCalendarInfo?.title && currentCalendarInfo.title !== 'My Planner' && currentCalendarInfo.title !== 'My Weekly Schedule'
+    calendarTitle && calendarTitle.trim()
+      ? calendarTitle.trim()
+      : currentCalendarInfo?.title && currentCalendarInfo.title !== 'My Planner' && currentCalendarInfo.title !== 'My Weekly Schedule'
       ? currentCalendarInfo.title
       : calendarId
       ? `Planner #${calendarId.slice(0, 6)}`
-      : 'Planner'
+      : 'My Planner'
 
   const syncStatusText =
     syncStatus === 'synced' ? 'Live Synced' : syncStatus === 'syncing' ? 'Syncing...' : 'Offline'
@@ -151,33 +176,93 @@ export function Header({
             {monthYear}
           </h1>
 
-          {/* Quick Calendar Switcher Pill with embedded sync dot */}
-          <div className="relative" ref={switcherRef}>
-            <button
-              type="button"
-              onClick={() => setSwitcherOpen((prev) => !prev)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs backdrop-blur-md transition-all cursor-pointer ${
-                isDark
-                  ? 'bg-zinc-800/90 border-white/15 text-zinc-200 hover:border-[#BDCC8D]/50'
-                  : 'bg-white/90 border-black/10 text-[#1a2e23] hover:border-[#2D5F3E]/40'
-              }`}
-              aria-label="Switch planner"
-              aria-expanded={switcherOpen}
-              title={`Status: ${syncStatusText}`}
-            >
-              {/* Subtle Embedded Sync Indicator Dot */}
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  syncStatus === 'synced'
-                    ? 'bg-emerald-500'
-                    : syncStatus === 'syncing'
-                    ? 'bg-amber-500 animate-ping'
-                    : 'bg-rose-500'
+          {/* Quick Calendar Switcher Pill with embedded sync dot and edit capability */}
+          <div className="relative flex items-center gap-1.5" ref={switcherRef}>
+            {isEditingTitle ? (
+              <form
+                onSubmit={handleTitleSubmit}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border shadow-md backdrop-blur-md transition-all z-20 ${
+                  isDark
+                    ? 'bg-zinc-900 border-emerald-500/50 text-zinc-100'
+                    : 'bg-white border-emerald-600/50 text-[#1a2e23]'
                 }`}
-              />
-              <span className="max-w-[100px] sm:max-w-[130px] truncate">{calendarDisplayName}</span>
-              <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${switcherOpen ? 'rotate-180' : ''}`} />
-            </button>
+              >
+                <input
+                  type="text"
+                  value={editTitleValue}
+                  onChange={(e) => setEditTitleValue(e.target.value)}
+                  placeholder="Calendar Name"
+                  autoFocus
+                  maxLength={255}
+                  className="px-2 py-0.5 text-xs font-bold rounded-md bg-transparent focus:outline-none w-[110px] sm:w-[150px]"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmittingTitle || !editTitleValue.trim()}
+                  className="p-1 rounded-full text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer disabled:opacity-40"
+                  title="Save calendar name"
+                  aria-label="Save name"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTitle(false)}
+                  className="p-1 rounded-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-500/10 transition-colors cursor-pointer"
+                  title="Cancel"
+                  aria-label="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setSwitcherOpen((prev) => !prev)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border shadow-2xs backdrop-blur-md transition-all cursor-pointer ${
+                    isDark
+                      ? 'bg-zinc-800/90 border-white/15 text-zinc-200 hover:border-[#BDCC8D]/50'
+                      : 'bg-white/90 border-black/10 text-[#1a2e23] hover:border-[#2D5F3E]/40'
+                  }`}
+                  aria-label="Switch planner"
+                  aria-expanded={switcherOpen}
+                  title={`Status: ${syncStatusText}`}
+                >
+                  {/* Subtle Embedded Sync Indicator Dot */}
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      syncStatus === 'synced'
+                        ? 'bg-emerald-500'
+                        : syncStatus === 'syncing'
+                        ? 'bg-amber-500 animate-ping'
+                        : 'bg-rose-500'
+                    }`}
+                  />
+                  <span className="max-w-[100px] sm:max-w-[130px] truncate">{calendarDisplayName}</span>
+                  <ChevronDown className={`w-3 h-3 opacity-60 transition-transform ${switcherOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {onUpdateCalendarTitle && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditTitleValue(calendarDisplayName)
+                      setIsEditingTitle(true)
+                    }}
+                    className={`p-1.5 rounded-full border shadow-2xs backdrop-blur-md transition-all cursor-pointer ${
+                      isDark
+                        ? 'bg-zinc-800/80 border-white/10 text-zinc-400 hover:text-zinc-200 hover:border-white/20 hover:bg-zinc-700'
+                        : 'bg-white/80 border-black/10 text-zinc-500 hover:text-zinc-800 hover:border-black/20 hover:bg-zinc-50'
+                    }`}
+                    title="Rename calendar"
+                    aria-label="Rename calendar"
+                  >
+                    <Pencil className="w-3 h-3" />
+                  </button>
+                )}
+              </>
+            )}
 
             {/* Switcher Dropdown Menu */}
             {switcherOpen && (
@@ -192,13 +277,29 @@ export function Header({
                   <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                     My Planners
                   </span>
-                  <Link
-                    href="/"
-                    onClick={() => setSwitcherOpen(false)}
-                    className="text-[11px] font-semibold text-emerald-600 dark:text-[#BDCC8D] hover:underline flex items-center gap-1"
-                  >
-                    <Home className="w-3 h-3" /> Hub
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    {onUpdateCalendarTitle && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSwitcherOpen(false)
+                          setEditTitleValue(calendarDisplayName)
+                          setIsEditingTitle(true)
+                        }}
+                        className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-[#BDCC8D] flex items-center gap-1 cursor-pointer"
+                        title="Rename current planner"
+                      >
+                        <Pencil className="w-3 h-3" /> Rename
+                      </button>
+                    )}
+                    <Link
+                      href="/"
+                      onClick={() => setSwitcherOpen(false)}
+                      className="text-[11px] font-semibold text-emerald-600 dark:text-[#BDCC8D] hover:underline flex items-center gap-1"
+                    >
+                      <Home className="w-3 h-3" /> Hub
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="max-h-56 overflow-y-auto space-y-1 py-1">

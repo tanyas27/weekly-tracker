@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Task, StoredTask, TaskModalFormData } from '@/types/task'
 import { DayInfo, COLORS, timeStringToDecimalHours, decimalHoursToTimeString } from '@/lib/time-utils'
+import { recordRecentCalendar } from '@/lib/recent-calendars'
 
 export type { StoredTask, TaskModalFormData }
 
@@ -58,6 +59,7 @@ export function useTasks(
   const [sessions, setSessions] = useState<SessionInfo[]>([])
   const [syncStatus, setSyncStatus] = useState<'synced' | 'syncing' | 'offline' | 'error'>('synced')
   const [isLoaded, setIsLoaded] = useState(false)
+  const [calendarTitle, setCalendarTitle] = useState<string>('My Planner')
   const [serverPrivacyState, setServerPrivacyState] = useState<{ isPrivate: boolean; isLocked: boolean }>({
     isPrivate: false,
     isLocked: false,
@@ -84,6 +86,10 @@ export function useTasks(
     async (showSyncing = true, customPasscode?: string) => {
       if (!calendarId) {
         setTasks(loadTasksFromLocalStorage())
+        if (typeof window !== 'undefined') {
+          const localTitle = localStorage.getItem('localCalendarTitle')
+          if (localTitle) setCalendarTitle(localTitle)
+        }
         setIsLoaded(true)
         return
       }
@@ -117,12 +123,22 @@ export function useTasks(
         const data = await res.json()
 
         if (data.isLocked) {
+          if (data.calendar?.title) setCalendarTitle(data.calendar.title)
           setServerPrivacyState({ isPrivate: true, isLocked: true })
           setTasks([])
           setSessions(data.sessions || [])
           setIsLoaded(true)
           setSyncStatus('synced')
           return
+        }
+
+        if (data.calendar?.title) {
+          setCalendarTitle(data.calendar.title)
+          recordRecentCalendar(calendarId, data.calendar.title, Boolean(data.isPrivate), {
+            taskCount: (data.tasks || []).length,
+            completedCount: (data.tasks || []).filter((t: Task) => t.completed).length,
+            lastActiveWeek: selectedWeek,
+          })
         }
 
         setServerPrivacyState({ isPrivate: Boolean(data.isPrivate), isLocked: false })
@@ -161,7 +177,7 @@ export function useTasks(
       eventSource.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data)
-          if (payload.type === 'TASKS_MUTATED' || payload.type === 'PRIVACY_UPDATED') {
+          if (payload.type === 'TASKS_MUTATED' || payload.type === 'PRIVACY_UPDATED' || payload.type === 'CALENDAR_UPDATED') {
             fetchCalendarData(false)
           }
         } catch {}
@@ -451,6 +467,57 @@ export function useTasks(
     setServerPrivacyState((prev) => ({ ...prev, isLocked: false }))
   }, [])
 
+  const updateCalendarTitle = useCallback(
+    async (newTitle: string): Promise<boolean> => {
+      const cleanTitle = newTitle.trim().slice(0, 255)
+      if (!cleanTitle) return false
+
+      setCalendarTitle(cleanTitle)
+
+      if (calendarId) {
+        recordRecentCalendar(calendarId, cleanTitle, serverPrivacyState.isPrivate, {
+          taskCount: totalTasks,
+          completedCount: completedTasks,
+          lastActiveWeek: selectedWeek,
+        })
+
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
+          }
+
+          const url = `/api/calendars/${calendarId}${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({ title: cleanTitle }),
+            cache: 'no-store',
+          })
+
+          if (res.ok) {
+            const data = await res.json()
+            if (data.calendar?.title) {
+              setCalendarTitle(data.calendar.title)
+            }
+            return true
+          }
+          return false
+        } catch (err) {
+          console.error('Failed to update calendar title:', err)
+          return false
+        }
+      } else {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('localCalendarTitle', cleanTitle)
+        }
+        return true
+      }
+    },
+    [calendarId, getPasscode, serverPrivacyState.isPrivate, totalTasks, completedTasks, selectedWeek]
+  )
+
   return {
     tasks,
     setTasks,
@@ -468,5 +535,8 @@ export function useTasks(
     unlockServerState,
     isLoaded,
     refetch: fetchCalendarData,
+    calendarTitle,
+    setCalendarTitle,
+    updateCalendarTitle,
   }
 }

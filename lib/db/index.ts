@@ -251,6 +251,24 @@ export async function copySessionTasks(calendarId: string, sourceSessionId: stri
   }
 }
 
+export async function updateCalendarTitle(calendarId: string, title: string): Promise<boolean> {
+  const sql = getSql();
+  if (!sql) return false;
+  try {
+    const cleanTitle = title.trim();
+    if (!cleanTitle) return false;
+    await sql`
+      INSERT INTO calendars (id, title)
+      VALUES (${calendarId}, ${cleanTitle})
+      ON CONFLICT (id) DO UPDATE SET title = ${cleanTitle}, updated_at = NOW()
+    `;
+    return true;
+  } catch (error) {
+    console.error('Database updateCalendarTitle error:', error);
+    return false;
+  }
+}
+
 export async function updateCalendarPrivacy(calendarId: string, isPrivate: boolean, passcodeHash: string | null): Promise<boolean> {
   const sql = getSql();
   if (!sql) return false;
@@ -328,7 +346,7 @@ export async function savePushSubscription(sub: {
       RETURNING id, calendar_id, endpoint, p256dh, auth, created_at, last_active_at
     `;
     return (rows[0] as PushSubscriptionRow) || null;
-  } catch (error) {
+  } catch {
     // If column updated_at does not exist, retry standard conflict
     try {
       const id = nanoid(16);

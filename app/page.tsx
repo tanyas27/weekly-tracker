@@ -46,25 +46,27 @@ export default function LandingPage() {
   const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
-    setIsMounted(true)
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme) {
-      setIsDark(savedTheme === 'dark')
-    } else {
-      setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches)
-    }
+    queueMicrotask(() => {
+      setIsMounted(true)
+      const savedTheme = localStorage.getItem('theme')
+      if (savedTheme) {
+        setIsDark(savedTheme === 'dark')
+      } else {
+        setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches)
+      }
 
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true
 
-    const lastId = getLastActiveCalendarId()
-    if (isStandalone && lastId) {
-      router.replace(`/c/${lastId}`)
-      return
-    }
+      const lastId = getLastActiveCalendarId()
+      if (isStandalone && lastId) {
+        router.replace(`/c/${lastId}`)
+        return
+      }
 
-    setRecentCalendars(getRecentCalendars())
+      setRecentCalendars(getRecentCalendars())
+    })
   }, [router])
 
   useEffect(() => {
