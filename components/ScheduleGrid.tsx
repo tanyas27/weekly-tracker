@@ -9,7 +9,7 @@ import {
 import { computeTaskOverlapLayout } from '@/lib/task-overlap'
 import { SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/types/task'
-import { TaskCard } from './TaskCard'
+import { TaskCard, activeDraggingTaskInfo } from './TaskCard'
 
 interface ScheduleGridProps {
   days: DayInfo[]
@@ -54,7 +54,7 @@ const DayColumn = React.memo(function DayColumn({
   onToggleComplete,
   onMoveTask,
 }: DayColumnProps) {
-  const [dragOverInfo, setDragOverInfo] = React.useState<{ slotIndex: number; duration: number; name: string } | null>(null)
+  const [dragOverSlot, setDragOverSlot] = React.useState<number | null>(null)
 
   return (
     <div
@@ -66,11 +66,38 @@ const DayColumn = React.memo(function DayColumn({
           : ''
       }`}
       style={{ height: visibleSlotCount * SLOT_HEIGHT_PX }}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'move'
+        const rect = e.currentTarget.getBoundingClientRect()
+        const offsetY = Math.max(0, e.clientY - rect.top)
+        const slotIdx = Math.min(visibleSlotCount - 1, Math.floor(offsetY / SLOT_HEIGHT_PX))
+        if (dragOverSlot !== slotIdx) {
+          setDragOverSlot(slotIdx)
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setDragOverSlot(null)
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        setDragOverSlot(null)
+        const taskId = e.dataTransfer.getData('taskId') || activeDraggingTaskInfo?.id
+        const fromDay = e.dataTransfer.getData('fromDay') || activeDraggingTaskInfo?.fromDay
+        const rect = e.currentTarget.getBoundingClientRect()
+        const offsetY = Math.max(0, e.clientY - rect.top)
+        const slotIdx = Math.min(visibleSlotCount - 1, Math.floor(offsetY / SLOT_HEIGHT_PX))
+        if (taskId && fromDay) {
+          onMoveTask(taskId, fromDay, day.short, slotIdx)
+        }
+      }}
     >
       {Array.from({ length: visibleSlotCount }).map((_, idx) => {
         const timeHour = startHour + idx
         const isCurrentHour = day.isToday && currentTimeHour >= timeHour && currentTimeHour < timeHour + 1
-        const isDragOver = dragOverInfo?.slotIndex === idx
+        const isDragOver = dragOverSlot === idx
         return (
           <div
             key={idx}
@@ -82,23 +109,6 @@ const DayColumn = React.memo(function DayColumn({
                   : `border-white/25 hover:bg-white/25 ${isCurrentHour ? 'bg-[#2D5F3E]/[0.07]' : ''}`
             }`}
             onClick={() => onOpenAddModal(day.short, idx)}
-            onDragOver={(e) => {
-              e.preventDefault()
-              e.dataTransfer.dropEffect = 'move'
-              const duration = parseFloat(e.dataTransfer.getData('taskDuration')) || 1
-              const name = e.dataTransfer.getData('taskName') || ''
-              setDragOverInfo({ slotIndex: idx, duration, name })
-            }}
-            onDragLeave={(e) => {
-              if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverInfo(null)
-            }}
-            onDrop={(e) => {
-              e.preventDefault()
-              setDragOverInfo(null)
-              const taskId = e.dataTransfer.getData('taskId')
-              const fromDay = e.dataTransfer.getData('fromDay')
-              if (taskId) onMoveTask(taskId, fromDay, day.short, idx)
-            }}
           >
             {!isDragOver && (
               <span className={`absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none text-[11px] font-bold ${
@@ -112,7 +122,7 @@ const DayColumn = React.memo(function DayColumn({
       })}
 
       {/* Optimistic Ghost Drag Card */}
-      {dragOverInfo && (
+      {dragOverSlot !== null && (
         <div
           className={`absolute left-1 right-1 rounded-lg border-2 border-dashed z-40 pointer-events-none flex items-center px-3 transition-all animate-in fade-in duration-100 ${
             isDark
@@ -120,12 +130,12 @@ const DayColumn = React.memo(function DayColumn({
               : 'border-[#2D5F3E] bg-[#2D5F3E]/15 text-[#2D5F3E] shadow-md shadow-[#2D5F3E]/10'
           }`}
           style={{
-            top: `${dragOverInfo.slotIndex * SLOT_HEIGHT_PX + 2}px`,
-            height: `${Math.max(1, dragOverInfo.duration) * SLOT_HEIGHT_PX - 4}px`,
+            top: `${dragOverSlot * SLOT_HEIGHT_PX + 2}px`,
+            height: `${Math.max(1, activeDraggingTaskInfo?.duration || 1) * SLOT_HEIGHT_PX - 4}px`,
           }}
         >
           <span className="text-xs font-bold truncate">
-            {dragOverInfo.name ? `Move "${dragOverInfo.name}"` : 'Drop task here'}
+            {activeDraggingTaskInfo?.name ? `Move "${activeDraggingTaskInfo.name}"` : 'Drop task here'}
           </span>
         </div>
       )}

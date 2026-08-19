@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-08-19 - Fix Vanishing Entries & Todo Data Serialization
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Fixed issue where newly created tasks or unscheduled todos vanished ~1 second after creation. Identified root causes: (1) `/api/calendars/[calendarId]/todos` was returning raw database rows with snake_case fields (`is_scheduled`, `sort_order`, etc.), causing client filter `isScheduled === false` to filter out todos upon subsequent background sync; (2) `ensureTasksSchema` lacked the schema migration for todo support columns (`is_scheduled`, `category`, `sort_order`) and dropped `NOT NULL` constraints on time fields; (3) `useTasks` lacked defensive data normalization and unified optimistic in-flight task tracking across background polling cycles and SSE events (`TODOS_MUTATED`). Implemented `taskRowToTask` helper, updated all calendar and todo API routes, added unit tests in `lib/__tests__/todo-utils.test.ts`.
+
 ### 2026-08-15 - Lazy Session Creation & Monday-Normalized Week Navigation
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
 - **Verifier:** daman

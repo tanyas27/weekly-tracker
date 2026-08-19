@@ -5,6 +5,7 @@ import {
   getCalendarSessions,
   getTasksForSession,
   updateCalendarTitle,
+  taskRowToTask,
 } from '@/lib/db';
 import { broadcastCalendarUpdate } from '@/lib/db/events';
 import { verifyPasscode } from '@/lib/crypto-utils';
@@ -69,17 +70,8 @@ export async function GET(
     const rawTasks = activeSession ? await getTasksForSession(activeSession.id) : [];
 
     const tasks = rawTasks.map((t) => ({
-      id: t.id,
-      name: t.name,
-      startTime: t.start_time,
-      endTime: t.end_time,
-      startHour: Number(t.start_hour),
-      duration: Number(t.duration),
-      completed: t.completed,
-      completedDays: t.completed_days || [],
-      days: t.days || [],
-      color: t.color,
-      reminderOffset: t.reminder_offset !== undefined && t.reminder_offset !== null ? Number(t.reminder_offset) : undefined,
+      ...taskRowToTask(t),
+      isScheduled: true,
     }));
 
     return NextResponse.json(

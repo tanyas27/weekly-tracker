@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { Task } from '@/types/task'
 import { TodoItem } from './TodoItem'
 import {
@@ -10,7 +10,13 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  DragStartEvent,
+  DragOverEvent,
   DragEndEvent,
+  DragOverlay,
+  defaultDropAnimationSideEffects,
+  DropAnimation,
+  MeasuringStrategy,
 } from '@dnd-kit/core'
 import {
   arrayMove,
@@ -34,6 +40,24 @@ interface TodoSidebarProps {
   onReorder: (reorderedIds: string[]) => void
 }
 
+const dropAnimationConfig: DropAnimation = {
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: {
+      active: {
+        opacity: '0.25',
+      },
+    },
+  }),
+  duration: 160,
+  easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+}
+
+const measuringConfig = {
+  droppable: {
+    strategy: MeasuringStrategy.Always,
+  },
+}
+
 export function TodoSidebar({
   todos,
   isDark,
@@ -48,18 +72,55 @@ export function TodoSidebar({
 }: TodoSidebarProps) {
   const [newTodoInput, setNewTodoInput] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
+  const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [dragActiveIds, setDragActiveIds] = useState<string[] | null>(null)
+  const [dragCompletedIds, setDragCompletedIds] = useState<string[] | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const categories = getUniqueCategories(todos)
-  const filteredTodos = filterTodosByCategory(todos, selectedCategory)
-  const stats = getTodoStats(filteredTodos)
-  const activeTodos = filteredTodos.filter((t) => !t.completed)
-  const completedTodos = filteredTodos.filter((t) => t.completed)
+  const categories = useMemo(() => getUniqueCategories(todos), [todos])
+  const filteredTodos = useMemo(() => filterTodosByCategory(todos, selectedCategory), [todos, selectedCategory])
+  const stats = useMemo(() => getTodoStats(filteredTodos), [filteredTodos])
+  const activeTodos = useMemo(() => filteredTodos.filter((t) => !t.completed), [filteredTodos])
+  const completedTodos = useMemo(() => filteredTodos.filter((t) => t.completed), [filteredTodos])
+
+  // Derive visual ordering during active drag gesture without causing setState infinite render loops
+  const displayActiveTodos = useMemo(() => {
+    if (!dragActiveIds) return activeTodos
+    const map = new Map(activeTodos.map((t) => [t.id, t]))
+    const result: Task[] = []
+    for (const id of dragActiveIds) {
+      const item = map.get(id)
+      if (item) result.push(item)
+    }
+    for (const item of activeTodos) {
+      if (!dragActiveIds.includes(item.id)) result.push(item)
+    }
+    return result
+  }, [activeTodos, dragActiveIds])
+
+  const displayCompletedTodos = useMemo(() => {
+    if (!dragCompletedIds) return completedTodos
+    const map = new Map(completedTodos.map((t) => [t.id, t]))
+    const result: Task[] = []
+    for (const id of dragCompletedIds) {
+      const item = map.get(id)
+      if (item) result.push(item)
+    }
+    for (const item of completedTodos) {
+      if (!dragCompletedIds.includes(item.id)) result.push(item)
+    }
+    return result
+  }, [completedTodos, dragCompletedIds])
+
+  const activeDragTodo = useMemo(() => {
+    if (!activeDragId) return null
+    return todos.find((t) => t.id === activeDragId) || null
+  }, [activeDragId, todos])
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -98,14 +159,79 @@ export function TodoSidebar({
     else if (e.key === 'Escape') { e.preventDefault(); setNewTodoInput('') }
   }
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const id = String(event.active.id)
+    setActiveDragId(id)
+    if (activeTodos.some((t) => t.id === id)) {
+      setDragActiveIds(activeTodos.map((t) => t.id))
+    } else if (completedTodos.some((t) => t.id === id)) {
+      setDragCompletedIds(completedTodos.map((t) => t.id))
+    }
+  }
+
+  const handleDragCancel = () => {
+    setActiveDragId(null)
+    setDragActiveIds(null)
+    setDragCompletedIds(null)
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const activeId = String(active.id)
+    const overId = String(over.id)
+
+    setDragActiveIds((prev) => {
+      if (!prev || !prev.includes(activeId) || !prev.includes(overId)) return prev
+      const oldIndex = prev.indexOf(activeId)
+      const newIndex = prev.indexOf(overId)
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev
+      return arrayMove(prev, oldIndex, newIndex)
+    })
+
+    setDragCompletedIds((prev) => {
+      if (!prev || !prev.includes(activeId) || !prev.includes(overId)) return prev
+      const oldIndex = prev.indexOf(activeId)
+      const newIndex = prev.indexOf(overId)
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return prev
+      return arrayMove(prev, oldIndex, newIndex)
+    })
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
-    if (over && active.id !== over.id) {
-      const oldIndex = filteredTodos.findIndex((t) => t.id === active.id)
-      const newIndex = filteredTodos.findIndex((t) => t.id === over.id)
-      if (oldIndex !== -1 && newIndex !== -1) {
-        onReorder(arrayMove(filteredTodos, oldIndex, newIndex).map((t) => t.id))
+    const activeId = String(active.id)
+    const overId = over ? String(over.id) : null
+
+    let finalOrder: string[] | null = null
+
+    if (activeTodos.some((t) => t.id === activeId)) {
+      finalOrder = dragActiveIds || activeTodos.map((t) => t.id)
+      if (!dragActiveIds && overId && activeId !== overId) {
+        const oldIndex = finalOrder.indexOf(activeId)
+        const newIndex = finalOrder.indexOf(overId)
+        if (oldIndex !== -1 && newIndex !== -1) {
+          finalOrder = arrayMove(finalOrder, oldIndex, newIndex)
+        }
       }
+    } else if (completedTodos.some((t) => t.id === activeId)) {
+      finalOrder = dragCompletedIds || completedTodos.map((t) => t.id)
+      if (!dragCompletedIds && overId && activeId !== overId) {
+        const oldIndex = finalOrder.indexOf(activeId)
+        const newIndex = finalOrder.indexOf(overId)
+        if (oldIndex !== -1 && newIndex !== -1) {
+          finalOrder = arrayMove(finalOrder, oldIndex, newIndex)
+        }
+      }
+    }
+
+    setActiveDragId(null)
+    setDragActiveIds(null)
+    setDragCompletedIds(null)
+
+    if (finalOrder && finalOrder.length > 0) {
+      onReorder(finalOrder)
     }
   }
 
@@ -322,11 +448,19 @@ export function TodoSidebar({
                 </p>
               </div>
             ) : (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                measuring={measuringConfig}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+                onDragCancel={handleDragCancel}
+              >
                 <div className="space-y-2">
-                  {activeTodos.length > 0 && (
-                    <SortableContext items={activeTodos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                      {activeTodos.map((todo) => (
+                  {displayActiveTodos.length > 0 && (
+                    <SortableContext items={displayActiveTodos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                      {displayActiveTodos.map((todo) => (
                         <TodoItem
                           key={todo.id}
                           task={todo}
@@ -340,14 +474,14 @@ export function TodoSidebar({
                     </SortableContext>
                   )}
 
-                  {completedTodos.length > 0 && (
+                  {displayCompletedTodos.length > 0 && (
                     <div className="mt-5">
                       <div className={`border-t border-dashed mb-3 ${isDark ? 'border-[#3d5a3e]/40' : 'border-[#c8b89a]/40'}`} />
                       <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 px-1 ${isDark ? 'text-[#4a7a4b]' : 'text-[#b89a60]'}`}>
-                        ✓ Done · {completedTodos.length}
+                        ✓ Done · {displayCompletedTodos.length}
                       </p>
-                      <SortableContext items={completedTodos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                        {completedTodos.map((todo) => (
+                      <SortableContext items={displayCompletedTodos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                        {displayCompletedTodos.map((todo) => (
                           <TodoItem
                             key={todo.id}
                             task={todo}
@@ -362,6 +496,16 @@ export function TodoSidebar({
                     </div>
                   )}
                 </div>
+
+                <DragOverlay dropAnimation={dropAnimationConfig}>
+                  {activeDragTodo ? (
+                    <TodoItem
+                      task={activeDragTodo}
+                      isDark={isDark}
+                      isDragOverlay
+                    />
+                  ) : null}
+                </DragOverlay>
               </DndContext>
             )}
           </div>

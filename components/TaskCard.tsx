@@ -17,6 +17,15 @@ interface TaskCardProps {
 }
 
 
+export interface DraggingTaskInfo {
+  id: string
+  fromDay: string
+  duration: number
+  name: string
+}
+
+export let activeDraggingTaskInfo: DraggingTaskInfo | null = null
+
 export const TaskCard = React.memo(function TaskCard({
   task,
   dayShort,
@@ -32,11 +41,12 @@ export const TaskCard = React.memo(function TaskCard({
   const rotation = rotations[parseInt(task.id, 10) % rotations.length] || 'rotate-0'
   const isCompletedOnDay = task.completedDays?.includes(dayShort) ?? task.completed
   const isShort = task.duration <= 0.5 || totalOverlaps > 1
+  const isDraggingRef = React.useRef(false)
 
   return (
     <div
       draggable
-      className={`absolute ${task.color} cursor-grab active:cursor-grabbing transition-all hover:scale-[1.03] hover:z-50 ${rotation} overflow-hidden rounded-[3px] ${
+      className={`absolute ${task.color} cursor-grab active:cursor-grabbing transition-[opacity,box-shadow,transform] duration-150 hover:scale-[1.03] hover:z-50 ${rotation} overflow-hidden rounded-[3px] ${
         isCompletedOnDay ? 'opacity-55' : ''
       }`}
       style={{
@@ -51,15 +61,32 @@ export const TaskCard = React.memo(function TaskCard({
           : '3px 3px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.08)',
       }}
       onDragStart={(e) => {
+        isDraggingRef.current = true
+        activeDraggingTaskInfo = {
+          id: task.id,
+          fromDay: dayShort,
+          duration: task.duration,
+          name: task.name,
+        }
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('taskId', task.id)
         e.dataTransfer.setData('fromDay', dayShort)
         e.dataTransfer.setData('taskDuration', String(task.duration))
         e.dataTransfer.setData('taskName', task.name)
       }}
+      onDragEnd={() => {
+        activeDraggingTaskInfo = null
+        setTimeout(() => {
+          isDraggingRef.current = false
+        }, 50)
+      }}
       onMouseEnter={(e) => (e.currentTarget.style.zIndex = '100')}
       onMouseLeave={(e) => (e.currentTarget.style.zIndex = String(overlapIndex + 1))}
-      onClick={() => onOpenEditModal(task)}
+      onClick={() => {
+        if (!isDraggingRef.current) {
+          onOpenEditModal(task)
+        }
+      }}
     >
       <div className={`flex justify-between gap-1 ${isShort ? 'items-center h-full' : 'items-start'}`}>
         <div className="flex-1 min-w-0 overflow-hidden">

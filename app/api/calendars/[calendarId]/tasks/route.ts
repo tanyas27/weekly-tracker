@@ -9,6 +9,7 @@ import {
   createTodo,
   updateTodo,
   promoteTodoToScheduled,
+  taskRowToTask,
 } from '@/lib/db';
 import { verifyPasscode } from '@/lib/crypto-utils';
 import { broadcastCalendarUpdate } from '@/lib/db/events';
@@ -57,6 +58,7 @@ export async function POST(
         return NextResponse.json({ error: 'Todo name required' }, { status: 400, headers: NO_CACHE_HEADERS });
       }
       const newTodo = await createTodo({
+        id: task.id,
         calendarId,
         name: task.name,
         color: task.color || 'bg-[#FFF9C4]',
@@ -64,7 +66,8 @@ export async function POST(
         sortOrder: task.sortOrder,
       });
       broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
-      return NextResponse.json({ success: true, task: newTodo }, { headers: NO_CACHE_HEADERS });
+      const formatted = newTodo ? { ...taskRowToTask(newTodo), isScheduled: false } : null;
+      return NextResponse.json({ success: true, task: formatted }, { headers: NO_CACHE_HEADERS });
     }
 
     if (action === 'update_todo') {
@@ -80,7 +83,8 @@ export async function POST(
         sortOrder: task?.sortOrder,
       });
       broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
-      return NextResponse.json({ success: true, task: updatedTodo }, { headers: NO_CACHE_HEADERS });
+      const formatted = updatedTodo ? { ...taskRowToTask(updatedTodo), isScheduled: false } : null;
+      return NextResponse.json({ success: true, task: formatted }, { headers: NO_CACHE_HEADERS });
     }
 
     if (action === 'promote_todo') {
@@ -105,7 +109,8 @@ export async function POST(
       });
       broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
       broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
-      return NextResponse.json({ success: true, task: promotedTask }, { headers: NO_CACHE_HEADERS });
+      const formatted = promotedTask ? { ...taskRowToTask(promotedTask), isScheduled: true } : null;
+      return NextResponse.json({ success: true, task: formatted }, { headers: NO_CACHE_HEADERS });
     }
 
     // For scheduled task actions, require session
@@ -138,6 +143,7 @@ export async function POST(
       }
       await dbDeleteTask(idToDelete, calendarId);
       broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
+      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
       return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -163,7 +169,8 @@ export async function POST(
     });
 
     broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
-    return NextResponse.json({ success: true, task: savedTask }, { headers: NO_CACHE_HEADERS });
+    const formatted = savedTask ? { ...taskRowToTask(savedTask), isScheduled: true } : null;
+    return NextResponse.json({ success: true, task: formatted }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('API /api/calendars/[calendarId]/tasks POST error:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500, headers: NO_CACHE_HEADERS });

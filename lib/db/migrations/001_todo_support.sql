@@ -8,8 +8,9 @@
 --   4. Add sort_order for manual todo list ordering
 --   5. Add index for efficient unscheduled task queries
 
--- Make time fields nullable to support unscheduled todos
+-- Make time fields and session_id nullable to support unscheduled todos
 ALTER TABLE tasks
+  ALTER COLUMN session_id DROP NOT NULL,
   ALTER COLUMN start_time DROP NOT NULL,
   ALTER COLUMN end_time DROP NOT NULL,
   ALTER COLUMN start_hour DROP NOT NULL,
