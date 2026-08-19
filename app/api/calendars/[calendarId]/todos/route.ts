@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCalendar, getUnscheduledTasks } from '@/lib/db';
+import { getCalendar, getUnscheduledTasks, taskRowToTask } from '@/lib/db';
 import { verifyPasscode } from '@/lib/crypto-utils';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +40,11 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized: Locked calendar' }, { status: 401, headers: NO_CACHE_HEADERS });
     }
 
-    const todos = await getUnscheduledTasks(calendarId);
+    const rawTodos = await getUnscheduledTasks(calendarId);
+    const todos = rawTodos.map((t) => ({
+      ...taskRowToTask(t),
+      isScheduled: false,
+    }));
     return NextResponse.json({ todos }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('API /api/calendars/[calendarId]/todos GET error:', error);

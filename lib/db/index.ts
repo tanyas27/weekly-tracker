@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { nanoid } from 'nanoid';
+import type { Task } from '@/types/task';
 
 export interface CalendarRow {
   id: string;
@@ -39,6 +40,25 @@ export interface TaskRow {
   sort_order?: number | null;
 }
 
+export function taskRowToTask(row: TaskRow): Task {
+  return {
+    id: row.id,
+    name: row.name,
+    startTime: row.start_time || '',
+    endTime: row.end_time || '',
+    startHour: row.start_hour !== null && row.start_hour !== undefined ? Number(row.start_hour) : 0,
+    duration: row.duration !== null && row.duration !== undefined ? Number(row.duration) : 0,
+    completed: Boolean(row.completed),
+    completedDays: row.completed_days || [],
+    days: row.days || [],
+    color: row.color,
+    reminderOffset: row.reminder_offset !== undefined && row.reminder_offset !== null ? Number(row.reminder_offset) : undefined,
+    isScheduled: row.is_scheduled !== false,
+    category: row.category || null,
+    sortOrder: row.sort_order !== null && row.sort_order !== undefined ? Number(row.sort_order) : undefined,
+  };
+}
+
 function getSql() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -55,6 +75,30 @@ export async function ensureTasksSchema() {
   try {
     await sql`
       ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_offset INTEGER;
+    `;
+    await sql`
+      ALTER TABLE tasks ALTER COLUMN session_id DROP NOT NULL;
+    `;
+    await sql`
+      ALTER TABLE tasks ALTER COLUMN start_time DROP NOT NULL;
+    `;
+    await sql`
+      ALTER TABLE tasks ALTER COLUMN end_time DROP NOT NULL;
+    `;
+    await sql`
+      ALTER TABLE tasks ALTER COLUMN start_hour DROP NOT NULL;
+    `;
+    await sql`
+      ALTER TABLE tasks ALTER COLUMN duration DROP NOT NULL;
+    `;
+    await sql`
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_scheduled BOOLEAN DEFAULT TRUE;
+    `;
+    await sql`
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS category VARCHAR(64);
+    `;
+    await sql`
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS sort_order INTEGER;
     `;
     hasInitializedTasksTable = true;
   } catch (error) {
@@ -452,6 +496,7 @@ export async function getUnscheduledTasks(calendarId: string): Promise<TaskRow[]
   const sql = getSql();
   if (!sql) return [];
   try {
+    await ensureTasksSchema();
     const rows = await sql`
       SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
              completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
@@ -471,6 +516,7 @@ export async function getUnscheduledTasks(calendarId: string): Promise<TaskRow[]
  * Create a new unscheduled todo
  */
 export async function createTodo(task: {
+  id?: string;
   calendarId: string;
   name: string;
   color: string;
@@ -480,7 +526,8 @@ export async function createTodo(task: {
   const sql = getSql();
   if (!sql) return null;
   try {
-    const todoId = nanoid(16);
+    await ensureTasksSchema();
+    const todoId = task.id || nanoid(16);
     const cleanName = sanitizeTaskName(task.name);
 
     const rows = await sql`
@@ -493,8 +540,15 @@ export async function createTodo(task: {
         ${task.sortOrder !== undefined ? task.sortOrder : null},
         ${task.color}, FALSE, ${[]}, ${[]}, NOW()
       )
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        category = EXCLUDED.category,
+        sort_order = EXCLUDED.sort_order,
+        color = EXCLUDED.color,
+        is_scheduled = FALSE,
+        updated_at = NOW()
       RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
     `;
     return (rows[0] as TaskRow) || null;
   } catch (error) {
@@ -517,6 +571,7 @@ export async function updateTodo(task: {
   const sql = getSql();
   if (!sql) return null;
   try {
+    await ensureTasksSchema();
     // Build update object based on provided fields
     const updates: Record<string, any> = { updated_at: new Date().toISOString() };
 
@@ -537,7 +592,7 @@ export async function updateTodo(task: {
       // Only updated_at, no real changes - just fetch current
       const rows = await sql`
         SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-               completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+               completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
         FROM tasks
         WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
       `;
@@ -552,7 +607,7 @@ export async function updateTodo(task: {
         SET name = ${updates.name}, updated_at = NOW()
         WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
         RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                  completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
       `;
     } else if (task.completed !== undefined && task.name === undefined && task.category === undefined && task.sortOrder === undefined) {
       rows = await sql`
@@ -560,7 +615,7 @@ export async function updateTodo(task: {
         SET completed = ${updates.completed}, updated_at = NOW()
         WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
         RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                  completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
       `;
     } else if (task.category !== undefined && task.name === undefined && task.completed === undefined && task.sortOrder === undefined) {
       rows = await sql`
@@ -568,7 +623,7 @@ export async function updateTodo(task: {
         SET category = ${updates.category}, updated_at = NOW()
         WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
         RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                  completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
       `;
     } else if (task.sortOrder !== undefined && task.name === undefined && task.completed === undefined && task.category === undefined) {
       rows = await sql`
@@ -576,7 +631,7 @@ export async function updateTodo(task: {
         SET sort_order = ${updates.sort_order}, updated_at = NOW()
         WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
         RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                  completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
       `;
     } else {
       // Multiple fields - update all provided ones
@@ -589,7 +644,7 @@ export async function updateTodo(task: {
             updated_at = NOW()
         WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
         RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                  completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
       `;
     }
 
@@ -616,6 +671,7 @@ export async function promoteTodoToScheduled(task: {
   const sql = getSql();
   if (!sql) return null;
   try {
+    await ensureTasksSchema();
     const rows = await sql`
       UPDATE tasks
       SET
@@ -630,7 +686,7 @@ export async function promoteTodoToScheduled(task: {
         updated_at = NOW()
       WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
       RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
     `;
     return (rows[0] as TaskRow) || null;
   } catch (error) {
@@ -649,6 +705,7 @@ export async function bulkUpdateSortOrder(
   const sql = getSql();
   if (!sql) return false;
   try {
+    await ensureTasksSchema();
     // Build CASE statement for efficient bulk update
     const caseStatements = ordering
       .map((item, idx) => `WHEN id = '${item.id}' THEN ${item.sortOrder}`)

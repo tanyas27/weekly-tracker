@@ -28,15 +28,18 @@ const loadTasksFromLocalStorage = (): Task[] => {
       return {
         id: task.id,
         name: task.name,
-        startTime: task.startTime,
-        endTime: task.endTime,
-        startHour: task.startHour,
-        duration: task.duration,
+        startTime: task.startTime || '',
+        endTime: task.endTime || '',
+        startHour: task.startHour || 0,
+        duration: task.duration || 0,
         completed: completedDays.length === taskDays.length && taskDays.length > 0,
         completedDays,
         days: taskDays,
         color: task.color,
         reminderOffset: task.reminderOffset,
+        isScheduled: task.isScheduled !== false,
+        category: task.category ?? null,
+        sortOrder: task.sortOrder,
       }
     })
   } catch (error) {
@@ -71,8 +74,8 @@ export function useTasks(
     passcodeRef.current = passcodeHash
   }, [passcodeHash])
 
-  // Track optimistic todo items that are in-flight (not yet confirmed by server)
-  const pendingOptimisticTodosRef = useRef<Map<string, Task>>(new Map())
+  // Track optimistic tasks and todos that are in-flight (not yet confirmed by server)
+  const pendingOptimisticTasksRef = useRef<Map<string, Task>>(new Map())
 
   const getPasscode = useCallback(
     (customPasscode?: string) => {
@@ -148,29 +151,63 @@ export function useTasks(
         setServerPrivacyState({ isPrivate: Boolean(data.isPrivate), isLocked: false })
         setSessions(data.sessions || [])
 
+        // Normalize scheduled tasks from server
+        const normalizedScheduledTasks: Task[] = (data.tasks || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          startTime: t.startTime ?? t.start_time ?? '',
+          endTime: t.endTime ?? t.end_time ?? '',
+          startHour: t.startHour !== undefined ? Number(t.startHour) : t.start_hour !== null && t.start_hour !== undefined ? Number(t.start_hour) : 0,
+          duration: t.duration !== undefined ? Number(t.duration) : t.duration !== null && t.duration !== undefined ? Number(t.duration) : 0,
+          completed: Boolean(t.completed),
+          completedDays: t.completedDays ?? t.completed_days ?? [],
+          days: t.days ?? [],
+          color: t.color,
+          reminderOffset: t.reminderOffset ?? (t.reminder_offset !== null && t.reminder_offset !== undefined ? Number(t.reminder_offset) : undefined),
+          isScheduled: t.isScheduled !== false && t.is_scheduled !== false,
+          category: t.category ?? null,
+          sortOrder: t.sortOrder ?? (t.sort_order !== null && t.sort_order !== undefined ? Number(t.sort_order) : undefined),
+        }))
+
         // Fetch todos separately (global across all weeks)
-        let allTasks = data.tasks || []
+        let allTasks = [...normalizedScheduledTasks]
         try {
           const todosRes = await fetch(`/api/calendars/${calendarId}/todos${queryStr}`, { headers, cache: 'no-store' })
           if (todosRes.ok) {
             const todosData = await todosRes.json()
             if (todosData.todos && Array.isArray(todosData.todos)) {
+              const normalizedTodos: Task[] = todosData.todos.map((t: any) => ({
+                id: t.id,
+                name: t.name,
+                startTime: t.startTime ?? t.start_time ?? '',
+                endTime: t.endTime ?? t.end_time ?? '',
+                startHour: t.startHour !== undefined ? Number(t.startHour) : t.start_hour !== null && t.start_hour !== undefined ? Number(t.start_hour) : 0,
+                duration: t.duration !== undefined ? Number(t.duration) : t.duration !== null && t.duration !== undefined ? Number(t.duration) : 0,
+                completed: Boolean(t.completed),
+                completedDays: t.completedDays ?? t.completed_days ?? [],
+                days: t.days ?? [],
+                color: t.color,
+                reminderOffset: t.reminderOffset ?? (t.reminder_offset !== null && t.reminder_offset !== undefined ? Number(t.reminder_offset) : undefined),
+                isScheduled: false,
+                category: t.category ?? null,
+                sortOrder: t.sortOrder ?? (t.sort_order !== null && t.sort_order !== undefined ? Number(t.sort_order) : undefined),
+              }))
               // Merge scheduled tasks with todos
-              allTasks = [...allTasks, ...todosData.todos]
+              allTasks = [...allTasks, ...normalizedTodos]
             }
           }
         } catch (err) {
           console.error('Failed to fetch todos:', err)
         }
 
-        // Re-append any optimistic todos that are still in-flight and not yet
-        // reflected in the server response — prevents the polling loop from
-        // wiping them out before the create API call completes.
-        if (pendingOptimisticTodosRef.current.size > 0) {
+        // Re-append any optimistic tasks or todos that are still in-flight and not yet
+        // reflected in the server response — prevents background polling/SSE from
+        // wiping them out before the create/update API call completes.
+        if (pendingOptimisticTasksRef.current.size > 0) {
           const serverIds = new Set(allTasks.map((t: Task) => t.id))
-          pendingOptimisticTodosRef.current.forEach((optimisticTodo, tempId) => {
+          pendingOptimisticTasksRef.current.forEach((optimisticItem, tempId) => {
             if (!serverIds.has(tempId)) {
-              allTasks = [...allTasks, optimisticTodo]
+              allTasks = [...allTasks, optimisticItem]
             }
           })
         }
@@ -209,7 +246,12 @@ export function useTasks(
       eventSource.onmessage = (event) => {
         try {
           const payload = JSON.parse(event.data)
-          if (payload.type === 'TASKS_MUTATED' || payload.type === 'PRIVACY_UPDATED' || payload.type === 'CALENDAR_UPDATED') {
+          if (
+            payload.type === 'TASKS_MUTATED' ||
+            payload.type === 'TODOS_MUTATED' ||
+            payload.type === 'PRIVACY_UPDATED' ||
+            payload.type === 'CALENDAR_UPDATED'
+          ) {
             fetchCalendarData(false)
           }
         } catch {}
@@ -287,8 +329,12 @@ export function useTasks(
           reminderOffset: formData.reminderOffset,
           completedDays: updatedCompletedDays,
           completed: updatedCompletedDays.length === formData.days.length && formData.days.length > 0,
+          isScheduled: true,
+          category: existingTask?.category ?? null,
+          sortOrder: existingTask?.sortOrder,
         }
 
+        pendingOptimisticTasksRef.current.set(updatedTask.id, updatedTask)
         setTasks((prev) => prev.map((t) => (t.id === formData.id ? updatedTask : t)))
       } else {
         updatedTask = {
@@ -303,8 +349,11 @@ export function useTasks(
           completedDays: [],
           color: formData.color || COLORS[0],
           reminderOffset: formData.reminderOffset,
+          isScheduled: true,
+          category: null,
         }
 
+        pendingOptimisticTasksRef.current.set(updatedTask.id, updatedTask)
         setTasks((prev) => [...prev, updatedTask])
       }
 
@@ -329,15 +378,23 @@ export function useTasks(
             cache: 'no-store',
           })
 
+          pendingOptimisticTasksRef.current.delete(updatedTask.id)
+
           if (res.ok) {
+            const data = await res.json()
+            if (data.task) {
+              setTasks((prev) => prev.map((t) => (t.id === updatedTask.id ? { ...updatedTask, ...data.task } : t)))
+            }
             setSyncStatus('synced')
           } else {
             setSyncStatus('error')
           }
         } catch {
+          pendingOptimisticTasksRef.current.delete(updatedTask.id)
           setSyncStatus('offline')
         }
       } else {
+        pendingOptimisticTasksRef.current.delete(updatedTask.id)
         setTasks((currentTasks) => {
           saveTasksToLocalStorage(currentTasks)
           return currentTasks
@@ -539,7 +596,7 @@ export function useTasks(
 
       // Register as optimistic before updating state so the polling loop
       // can preserve it if fetchCalendarData fires before the API responds.
-      pendingOptimisticTodosRef.current.set(newTodo.id, newTodo)
+      pendingOptimisticTasksRef.current.set(newTodo.id, newTodo)
 
       setTasks((prev) => [...prev, newTodo])
 
@@ -563,27 +620,29 @@ export function useTasks(
             cache: 'no-store',
           })
 
+          pendingOptimisticTasksRef.current.delete(newTodo.id)
+
           if (res.ok) {
             const data = await res.json()
-            // Server confirmed — remove from pending and swap temp id for real id
-            pendingOptimisticTodosRef.current.delete(newTodo.id)
             if (data.task) {
-              setTasks((prev) => prev.map((t) => (t.id === newTodo.id ? { ...newTodo, id: data.task.id } : t)))
+              setTasks((prev) => prev.map((t) => (t.id === newTodo.id ? { ...newTodo, ...data.task } : t)))
             }
             setSyncStatus('synced')
-            return data.task
+            return data.task || newTodo
           } else {
-            // Remove from pending on failure so it doesn't linger forever
-            pendingOptimisticTodosRef.current.delete(newTodo.id)
             setSyncStatus('error')
           }
         } catch {
-          pendingOptimisticTodosRef.current.delete(newTodo.id)
+          pendingOptimisticTasksRef.current.delete(newTodo.id)
           setSyncStatus('offline')
         }
       } else {
         // No calendarId (local mode) — no server call needed, remove immediately
-        pendingOptimisticTodosRef.current.delete(newTodo.id)
+        pendingOptimisticTasksRef.current.delete(newTodo.id)
+        setTasks((currentTasks) => {
+          saveTasksToLocalStorage(currentTasks)
+          return currentTasks
+        })
       }
 
       return newTodo

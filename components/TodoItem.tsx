@@ -1,19 +1,20 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Task } from '@/types/task'
-import { getCategoryColor, getContrastingTextColor } from '@/lib/todo-utils'
-import { GripVertical, Trash2, X, Check } from 'lucide-react'
+import { getCategoryColor } from '@/lib/todo-utils'
+import { GripVertical, Trash2, X } from 'lucide-react'
 
 interface TodoItemProps {
   task: Task
   isDark: boolean
-  onToggleComplete: (id: string) => void
-  onDelete: (id: string) => void
-  onUpdateName: (id: string, name: string) => void
-  onUpdateCategory: (id: string, category: string | null) => void
+  onToggleComplete?: (id: string) => void
+  onDelete?: (id: string) => void
+  onUpdateName?: (id: string, name: string) => void
+  onUpdateCategory?: (id: string, category: string | null) => void
+  isDragOverlay?: boolean
 }
 
 export function TodoItem({
@@ -23,6 +24,7 @@ export function TodoItem({
   onDelete,
   onUpdateName,
   onUpdateCategory,
+  isDragOverlay = false,
 }: TodoItemProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(task.name)
@@ -36,12 +38,19 @@ export function TodoItem({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id })
+  } = useSortable({
+    id: task.id,
+    disabled: isDragOverlay || isEditing,
+  })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  // When isDragging is true in DragOverlay mode, transform MUST be undefined for the list placeholder
+  // so it does not translate with the cursor or cause double-offset jumping!
+  const style: React.CSSProperties = isDragOverlay
+    ? {}
+    : {
+        transform: isDragging ? undefined : CSS.Translate.toString(transform),
+        transition: isDragging ? undefined : transition,
+      }
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -51,7 +60,7 @@ export function TodoItem({
   }, [isEditing])
 
   const handleDoubleClick = () => {
-    if (!task.completed) {
+    if (!task.completed && !isDragOverlay) {
       setIsEditing(true)
       setEditValue(task.name)
     }
@@ -60,7 +69,7 @@ export function TodoItem({
   const handleSaveEdit = () => {
     const trimmedValue = editValue.trim()
     if (trimmedValue && trimmedValue.length <= 500) {
-      if (trimmedValue !== task.name) {
+      if (trimmedValue !== task.name && onUpdateName) {
         onUpdateName(task.id, trimmedValue)
       }
       setIsEditing(false)
@@ -70,7 +79,9 @@ export function TodoItem({
     } else {
       const truncated = trimmedValue.slice(0, 500)
       setEditValue(truncated)
-      onUpdateName(task.id, truncated)
+      if (onUpdateName) {
+        onUpdateName(task.id, truncated)
+      }
       setIsEditing(false)
     }
   }
@@ -93,7 +104,9 @@ export function TodoItem({
 
   const handleConfirmDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onDelete(task.id)
+    if (onDelete) {
+      onDelete(task.id)
+    }
   }
 
   const handleCancelDelete = (e: React.MouseEvent) => {
@@ -103,37 +116,41 @@ export function TodoItem({
 
   const handleToggle = (e: React.MouseEvent) => {
     e.stopPropagation()
-    onToggleComplete(task.id)
+    if (onToggleComplete) {
+      onToggleComplete(task.id)
+    }
   }
 
   const categoryColor = task.category ? getCategoryColor(task.category) : null
-  // suppress unused var warning — kept for potential future use
-  void getContrastingTextColor
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`
-        group relative flex items-center gap-3 px-3.5 py-3 rounded-xl border backdrop-blur-md overflow-hidden
+        group relative flex items-center gap-3 px-3.5 py-3 rounded-xl border backdrop-blur-md overflow-hidden select-none
+        transition-[background-color,border-color,box-shadow,opacity] duration-150
         ${
-          task.completed
+          isDragOverlay
             ? isDark
-              ? 'bg-[#162318]/30 border-[#3d5a3e]/20 opacity-55'
-              : 'bg-[#f5ede0]/40 border-[#c8b89a]/20 opacity-55'
+              ? 'bg-[#1a2e1a] border-[#5a9a5b] shadow-2xl scale-[1.02] rotate-[1.5deg] z-50 cursor-grabbing'
+              : 'bg-[#fffdf5] border-[#d4a853] shadow-2xl scale-[1.02] rotate-[1.5deg] z-50 cursor-grabbing'
+            : isDragging
+            ? isDark
+              ? 'opacity-25 border-dashed border-[#5a9a5b]/60 bg-[#162318]/20 shadow-none'
+              : 'opacity-25 border-dashed border-[#d4a853]/60 bg-[#f5ede0]/20 shadow-none'
+            : task.completed
+            ? isDark
+              ? 'bg-[#162318]/30 border-[#3d5a3e]/20 opacity-55 shadow-sm hover:shadow-md'
+              : 'bg-[#f5ede0]/40 border-[#c8b89a]/20 opacity-55 shadow-sm hover:shadow-md'
             : isDark
-            ? 'bg-[#1a2e1a]/50 border-[#3d5a3e]/40 hover:bg-[#1e3420]/60 hover:border-[#4a7a4b]/50'
-            : 'bg-[#fffdf5]/65 border-[#d4b896]/50 hover:bg-[#fffdf5]/85 hover:border-[#c49a42]/50'
+            ? 'bg-[#1a2e1a]/50 border-[#3d5a3e]/40 hover:bg-[#1e3420]/60 hover:border-[#4a7a4b]/50 shadow-sm hover:shadow-md'
+            : 'bg-[#fffdf5]/65 border-[#d4b896]/50 hover:bg-[#fffdf5]/85 hover:border-[#c49a42]/50 shadow-sm hover:shadow-md'
         }
-        ${isDragging
-          ? 'shadow-2xl rotate-1 scale-105 z-50 border-[#d4a853]/70'
-          : 'shadow-sm hover:shadow-md'
-        }
-        transition-all duration-200
       `}
     >
       {/* Inline delete confirmation overlay */}
-      {isConfirmingDelete && (
+      {isConfirmingDelete && !isDragOverlay && (
         <div
           className={`
             absolute inset-0 z-10 flex items-center justify-between px-3.5 gap-2 rounded-xl
@@ -182,21 +199,24 @@ export function TodoItem({
       {/* Drag Handle */}
       <button
         type="button"
+        style={{ touchAction: 'none' }}
         className={`
-          cursor-grab active:cursor-grabbing transition-colors flex-shrink-0
+          cursor-grab active:cursor-grabbing transition-colors flex-shrink-0 p-1 -m-1 rounded touch-none
+          ${isDragOverlay ? 'cursor-grabbing' : ''}
           ${isDark ? 'text-[#3d5a3e]/60 hover:text-[#6b9e5e]' : 'text-[#c8b89a]/70 hover:text-[#a07840]'}
         `}
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
       >
-        <GripVertical className="w-3.5 h-3.5" />
+        <GripVertical className="w-3.5 h-3.5 pointer-events-none" />
       </button>
 
       {/* Checkbox */}
       <button
         type="button"
         onClick={handleToggle}
+        disabled={isDragOverlay}
         className={`
           flex-shrink-0 w-5 h-5 rounded-full border-[2px] flex items-center justify-center transition-all duration-200
           ${
@@ -220,7 +240,7 @@ export function TodoItem({
 
       {/* Todo Name (Editable) */}
       <div className="flex-1 min-w-0">
-        {isEditing ? (
+        {isEditing && !isDragOverlay ? (
           <input
             ref={inputRef}
             type="text"
@@ -284,22 +304,24 @@ export function TodoItem({
       )}
 
       {/* Delete Button */}
-      <button
-        type="button"
-        onClick={handleDeleteClick}
-        className={`
-          flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-150
-          w-6 h-6 rounded-lg flex items-center justify-center
-          ${
-            isDark
-              ? 'hover:bg-red-900/30 text-[#4a7a4b]/70 hover:text-red-400'
-              : 'hover:bg-red-50/80 text-[#c8b89a]/80 hover:text-red-500'
-          }
-        `}
-        aria-label="Delete todo"
-      >
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
+      {!isDragOverlay && (
+        <button
+          type="button"
+          onClick={handleDeleteClick}
+          className={`
+            flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-150
+            w-6 h-6 rounded-lg flex items-center justify-center
+            ${
+              isDark
+                ? 'hover:bg-red-900/30 text-[#4a7a4b]/70 hover:text-red-400'
+                : 'hover:bg-red-50/80 text-[#c8b89a]/80 hover:text-red-500'
+            }
+          `}
+          aria-label="Delete todo"
+        >
+          <Trash2 className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   )
 }
