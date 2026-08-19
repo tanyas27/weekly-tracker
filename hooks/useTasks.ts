@@ -71,6 +71,9 @@ export function useTasks(
     passcodeRef.current = passcodeHash
   }, [passcodeHash])
 
+  // Track optimistic todo items that are in-flight (not yet confirmed by server)
+  const pendingOptimisticTodosRef = useRef<Map<string, Task>>(new Map())
+
   const getPasscode = useCallback(
     (customPasscode?: string) => {
       if (customPasscode) return customPasscode
@@ -158,6 +161,18 @@ export function useTasks(
           }
         } catch (err) {
           console.error('Failed to fetch todos:', err)
+        }
+
+        // Re-append any optimistic todos that are still in-flight and not yet
+        // reflected in the server response — prevents the polling loop from
+        // wiping them out before the create API call completes.
+        if (pendingOptimisticTodosRef.current.size > 0) {
+          const serverIds = new Set(allTasks.map((t: Task) => t.id))
+          pendingOptimisticTodosRef.current.forEach((optimisticTodo, tempId) => {
+            if (!serverIds.has(tempId)) {
+              allTasks = [...allTasks, optimisticTodo]
+            }
+          })
         }
 
         setTasks(allTasks)
@@ -522,6 +537,10 @@ export function useTasks(
         sortOrder,
       }
 
+      // Register as optimistic before updating state so the polling loop
+      // can preserve it if fetchCalendarData fires before the API responds.
+      pendingOptimisticTodosRef.current.set(newTodo.id, newTodo)
+
       setTasks((prev) => [...prev, newTodo])
 
       if (calendarId) {
@@ -546,17 +565,25 @@ export function useTasks(
 
           if (res.ok) {
             const data = await res.json()
+            // Server confirmed — remove from pending and swap temp id for real id
+            pendingOptimisticTodosRef.current.delete(newTodo.id)
             if (data.task) {
               setTasks((prev) => prev.map((t) => (t.id === newTodo.id ? { ...newTodo, id: data.task.id } : t)))
             }
             setSyncStatus('synced')
             return data.task
           } else {
+            // Remove from pending on failure so it doesn't linger forever
+            pendingOptimisticTodosRef.current.delete(newTodo.id)
             setSyncStatus('error')
           }
         } catch {
+          pendingOptimisticTodosRef.current.delete(newTodo.id)
           setSyncStatus('offline')
         }
+      } else {
+        // No calendarId (local mode) — no server call needed, remove immediately
+        pendingOptimisticTodosRef.current.delete(newTodo.id)
       }
 
       return newTodo

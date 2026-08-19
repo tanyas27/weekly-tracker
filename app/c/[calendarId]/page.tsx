@@ -52,7 +52,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
-  const [todoSidebarOpen, setTodoSidebarOpen] = useState(true)
+  const [todoSidebarOpen, setTodoSidebarOpen] = useState(false)
   const [showCategoryManager, setShowCategoryManager] = useState(false)
 
   const defaultMonday = useMemo(() => {
