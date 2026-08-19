@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Task, StoredTask, TaskModalFormData } from '@/types/task'
 import { DayInfo, COLORS, timeStringToDecimalHours, decimalHoursToTimeString } from '@/lib/time-utils'
 import { recordRecentCalendar } from '@/lib/recent-calendars'
+import { sortTodos, groupTodosByCategory, getNextSortOrder } from '@/lib/todo-utils'
 
 export type { StoredTask, TaskModalFormData }
 
@@ -143,8 +144,24 @@ export function useTasks(
 
         setServerPrivacyState({ isPrivate: Boolean(data.isPrivate), isLocked: false })
         setSessions(data.sessions || [])
-        setTasks(data.tasks || [])
-        saveTasksToLocalStorage(data.tasks || [])
+
+        // Fetch todos separately (global across all weeks)
+        let allTasks = data.tasks || []
+        try {
+          const todosRes = await fetch(`/api/calendars/${calendarId}/todos${queryStr}`, { headers, cache: 'no-store' })
+          if (todosRes.ok) {
+            const todosData = await todosRes.json()
+            if (todosData.todos && Array.isArray(todosData.todos)) {
+              // Merge scheduled tasks with todos
+              allTasks = [...allTasks, ...todosData.todos]
+            }
+          }
+        } catch (err) {
+          console.error('Failed to fetch todos:', err)
+        }
+
+        setTasks(allTasks)
+        saveTasksToLocalStorage(allTasks)
         setIsLoaded(true)
         setSyncStatus('synced')
       } catch (error) {
@@ -467,6 +484,273 @@ export function useTasks(
     setServerPrivacyState((prev) => ({ ...prev, isLocked: false }))
   }, [])
 
+  // Todo-related derived state
+  const unscheduledTasks = useMemo(
+    () => sortTodos(tasks.filter((t) => t.isScheduled === false)),
+    [tasks]
+  )
+
+  const scheduledTasks = useMemo(
+    () => tasks.filter((t) => t.isScheduled !== false),
+    [tasks]
+  )
+
+  const tasksByCategory = useMemo(
+    () => groupTodosByCategory(unscheduledTasks),
+    [unscheduledTasks]
+  )
+
+  // Todo operations
+  const addTodo = useCallback(
+    async (name: string, category?: string) => {
+      if (!name.trim()) return null
+
+      const sortOrder = getNextSortOrder(unscheduledTasks)
+      const newTodo: Task = {
+        id: Date.now().toString(),
+        name: name.trim(),
+        startTime: '',
+        endTime: '',
+        startHour: 0,
+        duration: 0,
+        completed: false,
+        completedDays: [],
+        days: [],
+        color: COLORS[0],
+        isScheduled: false,
+        category: category || null,
+        sortOrder,
+      }
+
+      setTasks((prev) => [...prev, newTodo])
+
+      if (calendarId) {
+        setSyncStatus('syncing')
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
+          }
+
+          const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: 'create_todo',
+              task: newTodo,
+            }),
+            cache: 'no-store',
+          })
+
+          if (res.ok) {
+            const data = await res.json()
+            if (data.task) {
+              setTasks((prev) => prev.map((t) => (t.id === newTodo.id ? { ...newTodo, id: data.task.id } : t)))
+            }
+            setSyncStatus('synced')
+            return data.task
+          } else {
+            setSyncStatus('error')
+          }
+        } catch {
+          setSyncStatus('offline')
+        }
+      }
+
+      return newTodo
+    },
+    [calendarId, unscheduledTasks, getPasscode]
+  )
+
+  const toggleTodoComplete = useCallback(
+    async (todoId: string) => {
+      const todo = tasks.find((t) => t.id === todoId)
+      if (!todo || todo.isScheduled !== false) return
+
+      const updatedTodo = { ...todo, completed: !todo.completed }
+      setTasks((prev) => prev.map((t) => (t.id === todoId ? updatedTodo : t)))
+
+      if (calendarId) {
+        setSyncStatus('syncing')
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
+          }
+
+          const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: 'update_todo',
+              taskId: todoId,
+              task: { completed: updatedTodo.completed },
+            }),
+            cache: 'no-store',
+          })
+
+          if (res.ok) {
+            setSyncStatus('synced')
+          } else {
+            setSyncStatus('error')
+          }
+        } catch {
+          setSyncStatus('offline')
+        }
+      }
+    },
+    [calendarId, tasks, getPasscode]
+  )
+
+  const promoteTodoToScheduled = useCallback(
+    async (todoId: string, scheduleData: { startTime: string; duration: number; days: string[] }) => {
+      const todo = tasks.find((t) => t.id === todoId)
+      if (!todo || todo.isScheduled !== false) return null
+
+      const startHour = timeStringToDecimalHours(scheduleData.startTime)
+      const endTime = decimalHoursToTimeString(startHour + scheduleData.duration)
+
+      const promotedTask: Task = {
+        ...todo,
+        startTime: scheduleData.startTime,
+        endTime,
+        startHour,
+        duration: scheduleData.duration,
+        days: scheduleData.days,
+        isScheduled: true,
+        completedDays: [],
+        completed: false,
+      }
+
+      setTasks((prev) => prev.map((t) => (t.id === todoId ? promotedTask : t)))
+
+      if (calendarId && selectedWeek) {
+        setSyncStatus('syncing')
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
+          }
+
+          const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: 'promote_todo',
+              taskId: todoId,
+              weekStartDate: selectedWeek,
+              task: {
+                startTime: scheduleData.startTime,
+                endTime,
+                startHour,
+                duration: scheduleData.duration,
+                days: scheduleData.days,
+              },
+            }),
+            cache: 'no-store',
+          })
+
+          if (res.ok) {
+            setSyncStatus('synced')
+            return promotedTask
+          } else {
+            setSyncStatus('error')
+          }
+        } catch {
+          setSyncStatus('offline')
+        }
+      }
+
+      return promotedTask
+    },
+    [calendarId, selectedWeek, tasks, getPasscode]
+  )
+
+  const reorderTodos = useCallback(
+    async (reorderedIds: string[]) => {
+      const ordering = reorderedIds.map((id, index) => ({ id, sortOrder: index }))
+
+      setTasks((prev) =>
+        prev.map((t) => {
+          const newOrder = ordering.find((o) => o.id === t.id)
+          return newOrder ? { ...t, sortOrder: newOrder.sortOrder } : t
+        })
+      )
+
+      if (calendarId) {
+        setSyncStatus('syncing')
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
+          }
+
+          const url = `/api/calendars/${calendarId}/todos/reorder${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ todoIds: reorderedIds }),
+            cache: 'no-store',
+          })
+
+          if (res.ok) {
+            setSyncStatus('synced')
+          } else {
+            setSyncStatus('error')
+          }
+        } catch {
+          setSyncStatus('offline')
+        }
+      }
+    },
+    [calendarId, getPasscode]
+  )
+
+  const updateTodoCategory = useCallback(
+    async (todoId: string, category: string | null) => {
+      setTasks((prev) => prev.map((t) => (t.id === todoId ? { ...t, category } : t)))
+
+      if (calendarId) {
+        setSyncStatus('syncing')
+        try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+          const pass = getPasscode()
+          if (pass) {
+            headers['x-calendar-passcode'] = pass
+          }
+
+          const url = `/api/calendars/${calendarId}/tasks${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
+          const res = await fetch(url, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              action: 'update_todo',
+              taskId: todoId,
+              task: { category },
+            }),
+            cache: 'no-store',
+          })
+
+          if (res.ok) {
+            setSyncStatus('synced')
+          } else {
+            setSyncStatus('error')
+          }
+        } catch {
+          setSyncStatus('offline')
+        }
+      }
+    },
+    [calendarId, getPasscode]
+  )
+
   const updateCalendarTitle = useCallback(
     async (newTitle: string): Promise<boolean> => {
       const cleanTitle = newTitle.trim().slice(0, 255)
@@ -538,5 +822,14 @@ export function useTasks(
     calendarTitle,
     setCalendarTitle,
     updateCalendarTitle,
+    // Todo operations
+    unscheduledTasks,
+    scheduledTasks,
+    tasksByCategory,
+    addTodo,
+    toggleTodoComplete,
+    promoteTodoToScheduled,
+    reorderTodos,
+    updateTodoCategory,
   }
 }
