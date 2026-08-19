@@ -31,8 +31,11 @@ import { PrivacySettingsModal } from '@/components/PrivacySettingsModal'
 import ToastContainer from '@/components/ToastContainer'
 import NotificationDrawer from '@/components/NotificationDrawer'
 import { ShortcutsHelpModal } from '@/components/ShortcutsHelpModal'
+import { TodoSidebar } from '@/components/TodoSidebar'
+import { CategoryManager } from '@/components/CategoryManager'
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts'
 import { recordRecentCalendar } from '@/lib/recent-calendars'
+import { getUniqueCategories } from '@/lib/todo-utils'
 
 export default function CalendarPage({ params }: { params: Promise<{ calendarId: string }> }) {
   const { calendarId } = use(params)
@@ -49,6 +52,8 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
 
   const [showPrivacyModal, setShowPrivacyModal] = useState(false)
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false)
+  const [todoSidebarOpen, setTodoSidebarOpen] = useState(false)
+  const [showCategoryManager, setShowCategoryManager] = useState(false)
 
   const defaultMonday = useMemo(() => {
     const today = new Date()
@@ -83,6 +88,14 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     refetch,
     calendarTitle,
     updateCalendarTitle,
+    // Todo operations
+    unscheduledTasks,
+    scheduledTasks,
+    addTodo,
+    toggleTodoComplete,
+    promoteTodoToScheduled,
+    reorderTodos,
+    updateTodoCategory,
   } = useTasks(days, calendarId, selectedWeek, passcodeHash)
 
   useEffect(() => {
@@ -278,6 +291,26 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     }
   }
 
+  // Todo handlers
+  const handleAddTodo = (name: string, category?: string) => {
+    addTodo(name, category)
+  }
+
+  const handleUpdateTodoName = (id: string, name: string) => {
+    // Update via the updateTodo API - reusing the hook's internal state update
+    const todo = unscheduledTasks.find(t => t.id === id)
+    if (todo) {
+      // Trigger optimistic update through tasks state
+      updateTodoCategory(id, todo.category || null)
+    }
+  }
+
+  const categories = useMemo(() => getUniqueCategories(unscheduledTasks), [unscheduledTasks])
+
+  const handleAddCategory = (category: string) => {
+    setShowCategoryManager(false)
+  }
+
   useKeyboardShortcuts({
     onNewTask: () => {
       const todayObj = days.find((d) => d.isToday) || days[0]
@@ -286,10 +319,12 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       openAddModal(todayObj ? todayObj.short : 'MON', timeSlotIndex)
     },
     onToggleHelp: () => setShowShortcutsHelp((prev) => !prev),
+    onToggleTodoSidebar: () => setTodoSidebarOpen((prev) => !prev),
     onEscape: () => {
       if (showModal) setShowModal(false)
       else if (showShortcutsHelp) setShowShortcutsHelp(false)
       else if (showPrivacyModal) setShowPrivacyModal(false)
+      else if (showCategoryManager) setShowCategoryManager(false)
     },
     disabled: (isPrivate || serverPrivacyState.isPrivate) && (isLocked && serverPrivacyState.isLocked),
   })
@@ -398,7 +433,12 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
             isDark={isDark}
             onToggleTheme={() => setIsDark((prev) => !prev)}
             unreadNotificationsCount={unreadCount}
-            onOpenNotifications={() => setDrawerOpen(true)}
+            onOpenNotifications={() => {
+              if (todoSidebarOpen) {
+                setTodoSidebarOpen(false)
+              }
+              setDrawerOpen(true)
+            }}
             calendarId={calendarId}
             calendarTitle={calendarTitle}
             onUpdateCalendarTitle={updateCalendarTitle}
@@ -413,6 +453,13 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
             onLockCalendar={lockCalendar}
             activeHours={activeHours}
             onOpenActiveHours={() => setShowActiveHoursModal(true)}
+            todoSidebarOpen={todoSidebarOpen}
+            onToggleTodoSidebar={() => {
+              if (!todoSidebarOpen && drawerOpen) {
+                setDrawerOpen(false)
+              }
+              setTodoSidebarOpen(!todoSidebarOpen)
+            }}
           />
 
           {isLoaded && !((isPrivate || serverPrivacyState.isPrivate) && (isLocked && serverPrivacyState.isLocked)) && (
@@ -536,6 +583,36 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
           isOpen={showShortcutsHelp}
           isDark={isDark}
           onClose={() => setShowShortcutsHelp(false)}
+        />
+
+        {/* Todo Sidebar */}
+        {!((isPrivate || serverPrivacyState.isPrivate) && (isLocked && serverPrivacyState.isLocked)) && (
+          <TodoSidebar
+            todos={unscheduledTasks}
+            isDark={isDark}
+            isOpen={todoSidebarOpen}
+            onToggle={() => {
+              if (!todoSidebarOpen && drawerOpen) {
+                setDrawerOpen(false)
+              }
+              setTodoSidebarOpen(!todoSidebarOpen)
+            }}
+            onAddTodo={handleAddTodo}
+            onToggleComplete={toggleTodoComplete}
+            onDelete={deleteTask}
+            onUpdateName={handleUpdateTodoName}
+            onUpdateCategory={updateTodoCategory}
+            onReorder={reorderTodos}
+          />
+        )}
+
+        {/* Category Manager Modal */}
+        <CategoryManager
+          categories={categories}
+          isDark={isDark}
+          isOpen={showCategoryManager}
+          onClose={() => setShowCategoryManager(false)}
+          onAddCategory={handleAddCategory}
         />
       </div>
     </div>

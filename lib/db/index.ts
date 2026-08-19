@@ -21,18 +21,22 @@ export interface SessionRow {
 export interface TaskRow {
   id: string;
   calendar_id: string;
-  session_id: string;
+  session_id: string | null; // Nullable for global todos
   name: string;
-  start_time: string;
-  end_time: string;
-  start_hour: number;
-  duration: number;
+  start_time: string | null; // Nullable for todos
+  end_time: string | null; // Nullable for todos
+  start_hour: number | null; // Nullable for todos
+  duration: number | null; // Nullable for todos
   completed: boolean;
   completed_days: string[];
   days: string[];
   color: string;
   reminder_offset?: number | null;
   updated_at: string;
+  // Todo support fields
+  is_scheduled?: boolean;
+  category?: string | null;
+  sort_order?: number | null;
 }
 
 function getSql() {
@@ -158,9 +162,10 @@ export async function getTasksForSession(sessionId: string): Promise<TaskRow[]> 
   try {
     await ensureTasksSchema();
     const rows = await sql`
-      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at
+      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
       FROM tasks
       WHERE session_id = ${sessionId}::uuid
+        AND (is_scheduled IS NULL OR is_scheduled = TRUE)
       ORDER BY start_hour ASC
     `;
     return (rows as TaskRow[]) || [];
@@ -197,11 +202,11 @@ export async function upsertTask(task: {
 
     const rows = await sql`
       INSERT INTO tasks (
-        id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at
+        id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled
       )
       VALUES (
         ${taskId}, ${task.calendarId}, ${task.sessionId}::uuid, ${cleanName}, ${task.startTime}, ${task.endTime},
-        ${task.startHour}, ${task.duration}, ${isCompleted}, ${completedDays}, ${task.days}, ${task.color}, ${reminderOffset}, NOW()
+        ${task.startHour}, ${task.duration}, ${isCompleted}, ${completedDays}, ${task.days}, ${task.color}, ${reminderOffset}, NOW(), TRUE
       )
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
@@ -215,7 +220,7 @@ export async function upsertTask(task: {
         color = EXCLUDED.color,
         reminder_offset = EXCLUDED.reminder_offset,
         updated_at = NOW()
-      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at
+      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
     `;
     return (rows[0] as TaskRow) || null;
   } catch (error) {
@@ -247,6 +252,11 @@ export async function copySessionTasks(calendarId: string, sourceSessionId: stri
     const createdTasks: TaskRow[] = [];
     for (const st of sourceTasks) {
       const newTaskId = nanoid(16);
+      // Skip unscheduled todos when copying
+      if (!st.start_time || !st.end_time || st.start_hour === null || st.duration === null) {
+        continue;
+      }
+
       const inserted = await upsertTask({
         id: newTaskId,
         calendarId,
@@ -428,5 +438,237 @@ export async function getAllPushSubscriptions(): Promise<PushSubscriptionRow[]> 
   } catch (error) {
     console.error('Database getAllPushSubscriptions error:', error);
     return [];
+  }
+}
+
+// ============================================================================
+// TODO LIST SUPPORT FUNCTIONS
+// ============================================================================
+
+/**
+ * Get all unscheduled todos for a calendar (global, not tied to a specific week)
+ */
+export async function getUnscheduledTasks(calendarId: string): Promise<TaskRow[]> {
+  const sql = getSql();
+  if (!sql) return [];
+  try {
+    const rows = await sql`
+      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+             completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+      FROM tasks
+      WHERE calendar_id = ${calendarId}
+        AND is_scheduled = FALSE
+      ORDER BY sort_order ASC NULLS LAST, updated_at DESC
+    `;
+    return (rows as TaskRow[]) || [];
+  } catch (error) {
+    console.error('Database getUnscheduledTasks error:', error);
+    return [];
+  }
+}
+
+/**
+ * Create a new unscheduled todo
+ */
+export async function createTodo(task: {
+  calendarId: string;
+  name: string;
+  color: string;
+  category?: string | null;
+  sortOrder?: number;
+}): Promise<TaskRow | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const todoId = nanoid(16);
+    const cleanName = sanitizeTaskName(task.name);
+
+    const rows = await sql`
+      INSERT INTO tasks (
+        id, calendar_id, session_id, name, is_scheduled, category, sort_order,
+        color, completed, completed_days, days, updated_at
+      )
+      VALUES (
+        ${todoId}, ${task.calendarId}, NULL, ${cleanName}, FALSE, ${task.category || null},
+        ${task.sortOrder !== undefined ? task.sortOrder : null},
+        ${task.color}, FALSE, ${[]}, ${[]}, NOW()
+      )
+      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+    `;
+    return (rows[0] as TaskRow) || null;
+  } catch (error) {
+    console.error('Database createTodo error:', error);
+    return null;
+  }
+}
+
+/**
+ * Update an existing todo (name, category, completion, etc.)
+ */
+export async function updateTodo(task: {
+  id: string;
+  calendarId: string;
+  name?: string;
+  completed?: boolean;
+  category?: string | null;
+  sortOrder?: number | null;
+}): Promise<TaskRow | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    // Build update object based on provided fields
+    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+
+    if (task.name !== undefined) {
+      updates.name = sanitizeTaskName(task.name);
+    }
+    if (task.completed !== undefined) {
+      updates.completed = task.completed;
+    }
+    if (task.category !== undefined) {
+      updates.category = task.category;
+    }
+    if (task.sortOrder !== undefined) {
+      updates.sort_order = task.sortOrder;
+    }
+
+    if (Object.keys(updates).length === 1) {
+      // Only updated_at, no real changes - just fetch current
+      const rows = await sql`
+        SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+               completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+        FROM tasks
+        WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+      `;
+      return (rows[0] as TaskRow) || null;
+    }
+
+    // Use conditional update based on which fields are provided
+    let rows;
+    if (task.name !== undefined && task.completed === undefined && task.category === undefined && task.sortOrder === undefined) {
+      rows = await sql`
+        UPDATE tasks
+        SET name = ${updates.name}, updated_at = NOW()
+        WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+        RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+      `;
+    } else if (task.completed !== undefined && task.name === undefined && task.category === undefined && task.sortOrder === undefined) {
+      rows = await sql`
+        UPDATE tasks
+        SET completed = ${updates.completed}, updated_at = NOW()
+        WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+        RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+      `;
+    } else if (task.category !== undefined && task.name === undefined && task.completed === undefined && task.sortOrder === undefined) {
+      rows = await sql`
+        UPDATE tasks
+        SET category = ${updates.category}, updated_at = NOW()
+        WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+        RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+      `;
+    } else if (task.sortOrder !== undefined && task.name === undefined && task.completed === undefined && task.category === undefined) {
+      rows = await sql`
+        UPDATE tasks
+        SET sort_order = ${updates.sort_order}, updated_at = NOW()
+        WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+        RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+      `;
+    } else {
+      // Multiple fields - update all provided ones
+      rows = await sql`
+        UPDATE tasks
+        SET name = COALESCE(${task.name !== undefined ? updates.name : null}, name),
+            completed = COALESCE(${task.completed !== undefined ? updates.completed : null}, completed),
+            category = ${task.category !== undefined ? updates.category : sql`category`},
+            sort_order = ${task.sortOrder !== undefined ? updates.sort_order : sql`sort_order`},
+            updated_at = NOW()
+        WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+        RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                  completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+      `;
+    }
+
+    return (rows[0] as TaskRow) || null;
+  } catch (error) {
+    console.error('Database updateTodo error:', error);
+    return null;
+  }
+}
+
+/**
+ * Promote a todo to a scheduled task by adding time information
+ */
+export async function promoteTodoToScheduled(task: {
+  id: string;
+  calendarId: string;
+  sessionId: string;
+  startTime: string;
+  endTime: string;
+  startHour: number;
+  duration: number;
+  days: string[];
+}): Promise<TaskRow | null> {
+  const sql = getSql();
+  if (!sql) return null;
+  try {
+    const rows = await sql`
+      UPDATE tasks
+      SET
+        is_scheduled = TRUE,
+        session_id = ${task.sessionId}::uuid,
+        start_time = ${task.startTime},
+        end_time = ${task.endTime},
+        start_hour = ${task.startHour},
+        duration = ${task.duration},
+        days = ${task.days},
+        completed_days = ${[]},
+        updated_at = NOW()
+      WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
+      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
+                completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+    `;
+    return (rows[0] as TaskRow) || null;
+  } catch (error) {
+    console.error('Database promoteTodoToScheduled error:', error);
+    return null;
+  }
+}
+
+/**
+ * Bulk update sort orders for manual reordering
+ */
+export async function bulkUpdateSortOrder(
+  calendarId: string,
+  ordering: Array<{ id: string; sortOrder: number }>
+): Promise<boolean> {
+  const sql = getSql();
+  if (!sql) return false;
+  try {
+    // Build CASE statement for efficient bulk update
+    const caseStatements = ordering
+      .map((item, idx) => `WHEN id = '${item.id}' THEN ${item.sortOrder}`)
+      .join(' ');
+
+    const ids = ordering.map(item => item.id);
+
+    if (ids.length === 0) return true;
+
+    await sql`
+      UPDATE tasks
+      SET sort_order = CASE ${sql.unsafe(caseStatements)} END,
+          updated_at = NOW()
+      WHERE calendar_id = ${calendarId}
+        AND id = ANY(${ids})
+    `;
+
+    return true;
+  } catch (error) {
+    console.error('Database bulkUpdateSortOrder error:', error);
+    return false;
   }
 }
