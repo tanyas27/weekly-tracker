@@ -3,7 +3,6 @@ import { useEffect } from 'react'
 interface UseKeyboardShortcutsProps {
   onNewTask: () => void
   onToggleHelp: () => void
-  onToggleTodoSidebar?: () => void
   onEscape?: () => void
   disabled?: boolean
 }
@@ -11,7 +10,6 @@ interface UseKeyboardShortcutsProps {
 export function useKeyboardShortcuts({
   onNewTask,
   onToggleHelp,
-  onToggleTodoSidebar,
   onEscape,
   disabled = false,
 }: UseKeyboardShortcutsProps) {
@@ -37,11 +35,6 @@ export function useKeyboardShortcuts({
       if (key === 'n' || key === 'N' || key === 'c' || key === 'C') {
         e.preventDefault()
         onNewTask()
-      } else if (key === 't' || key === 'T') {
-        if (onToggleTodoSidebar) {
-          e.preventDefault()
-          onToggleTodoSidebar()
-        }
       } else if (key === '?' || (e.shiftKey && key === '/')) {
         e.preventDefault()
         onToggleHelp()
@@ -53,5 +46,5 @@ export function useKeyboardShortcuts({
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onNewTask, onToggleHelp, onToggleTodoSidebar, onEscape, disabled])
+  }, [onNewTask, onToggleHelp, onEscape, disabled])
 }

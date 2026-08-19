@@ -19,7 +19,6 @@ import {
   Pencil,
   X,
   MoreHorizontal,
-  ListTodo,
 } from 'lucide-react'
 import { getRecentCalendars, RecentCalendar, formatRelativeTime } from '@/lib/recent-calendars'
 import {
@@ -58,8 +57,6 @@ interface HeaderProps {
   onLockCalendar?: () => void
   activeHours?: ActiveHoursPreference
   onOpenActiveHours?: () => void
-  todoSidebarOpen?: boolean
-  onToggleTodoSidebar?: () => void
 }
 
 function formatWeekLabel(rawDateStr: string): string {
@@ -93,8 +90,6 @@ export function Header({
   onLockCalendar,
   activeHours,
   onOpenActiveHours,
-  todoSidebarOpen = false,
-  onToggleTodoSidebar,
 }: HeaderProps) {
   const router = useRouter()
   const [copied, setCopied] = useState(false)
@@ -736,27 +731,6 @@ export function Header({
               </button>
             )}
 
-            {/* Todo List Toggle */}
-            {onToggleTodoSidebar && (
-              <button
-                type="button"
-                onClick={onToggleTodoSidebar}
-                title={`${todoSidebarOpen ? 'Hide' : 'Show'} todo list (T)`}
-                className={`w-8.5 h-8.5 flex items-center justify-center rounded-full border transition-all active:scale-95 cursor-pointer ${
-                  todoSidebarOpen
-                    ? isDark
-                      ? 'bg-amber-500/80 border-amber-400 text-zinc-950'
-                      : 'bg-amber-400 border-amber-500 text-zinc-950'
-                    : isDark
-                    ? 'bg-zinc-800/80 border-white/10 text-amber-400 hover:bg-zinc-700'
-                    : 'bg-amber-50/80 border-amber-200/80 text-amber-700 hover:bg-amber-100'
-                }`}
-                aria-label={`${todoSidebarOpen ? 'Hide' : 'Show'} todo list`}
-              >
-                <ListTodo className="w-4 h-4" />
-              </button>
-            )}
-
             <button
               type="button"
               onClick={onOpenNotifications}
@@ -883,39 +857,6 @@ export function Header({
 
             {/* Action Items List */}
             <div className="space-y-2">
-              {/* Todo List Option */}
-              {onToggleTodoSidebar && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMobileMore(false)
-                    onToggleTodoSidebar()
-                  }}
-                  className={`w-full text-left p-3 rounded-2xl flex items-center justify-between transition-colors cursor-pointer ${
-                    isDark ? 'hover:bg-zinc-800/80 bg-zinc-800/40' : 'hover:bg-zinc-100 bg-zinc-50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
-                      todoSidebarOpen
-                        ? isDark ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-400/20 text-amber-700'
-                        : isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      <ListTodo className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold">My Journal</div>
-                      <div className="text-[11px] opacity-60">
-                        {todoSidebarOpen ? 'Currently open · tap to close' : 'Open todo &amp; notes list'}
-                      </div>
-                    </div>
-                  </div>
-                  <span className={`text-xs font-semibold ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
-                    {todoSidebarOpen ? 'Close' : 'Open'}
-                  </span>
-                </button>
-              )}
-
               {/* Active Hours Option */}
               {onOpenActiveHours && (
                 <button

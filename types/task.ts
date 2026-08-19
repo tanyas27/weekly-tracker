@@ -10,10 +10,6 @@ export interface Task {
   days: string[]
   color: string
   reminderOffset?: number | null
-  // Todo list support fields
-  isScheduled?: boolean       // false = unscheduled todo, true/undefined = scheduled calendar task
-  category?: string | null    // Category/tag for organization (e.g., "Work", "Personal")
-  sortOrder?: number          // Manual ordering in todo list (lower = higher priority)
 }
 
 // On-disk shape spanning the legacy single-day (`day`) to multi-day (`days`) migration.
