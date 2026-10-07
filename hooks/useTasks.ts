@@ -3,6 +3,7 @@ import { Task, StoredTask, TaskModalFormData } from '@/types/task'
 import { DayInfo, COLORS, timeStringToDecimalHours, decimalHoursToTimeString } from '@/lib/time-utils'
 import { recordRecentCalendar } from '@/lib/recent-calendars'
 import { sortTodos, groupTodosByCategory, getNextSortOrder } from '@/lib/todo-utils'
+import { subscribeToCalendarRealtime, RealtimeSubscription } from '@/lib/realtime/ably-client'
 
 export type { StoredTask, TaskModalFormData }
 
@@ -73,6 +74,17 @@ export function useTasks(
 
   // Track optimistic todo items that are in-flight (not yet confirmed by server)
   const pendingOptimisticTodosRef = useRef<Map<string, Task>>(new Map())
+
+  // Track recent local mutation IDs to suppress redundant self-echo refetches
+  const localMutationIdsRef = useRef<Set<string>>(new Set())
+  const registerLocalMutation = useCallback(() => {
+    const mutationId = `mut-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    localMutationIdsRef.current.add(mutationId)
+    setTimeout(() => {
+      localMutationIdsRef.current.delete(mutationId)
+    }, 30000)
+    return mutationId
+  }, [])
 
   const getPasscode = useCallback(
     (customPasscode?: string) => {
@@ -148,19 +160,23 @@ export function useTasks(
         setServerPrivacyState({ isPrivate: Boolean(data.isPrivate), isLocked: false })
         setSessions(data.sessions || [])
 
-        // Fetch todos separately (global across all weeks)
+        // Consolidated tasks & todos (global todos returned directly in main calendar payload)
         let allTasks = data.tasks || []
-        try {
-          const todosRes = await fetch(`/api/calendars/${calendarId}/todos${queryStr}`, { headers, cache: 'no-store' })
-          if (todosRes.ok) {
-            const todosData = await todosRes.json()
-            if (todosData.todos && Array.isArray(todosData.todos)) {
-              // Merge scheduled tasks with todos
-              allTasks = [...allTasks, ...todosData.todos]
+        if (data.todos && Array.isArray(data.todos)) {
+          allTasks = [...allTasks, ...data.todos]
+        } else {
+          // Fallback only if older backend payload doesn't include todos
+          try {
+            const todosRes = await fetch(`/api/calendars/${calendarId}/todos${queryStr}`, { headers, cache: 'no-store' })
+            if (todosRes.ok) {
+              const todosData = await todosRes.json()
+              if (todosData.todos && Array.isArray(todosData.todos)) {
+                allTasks = [...allTasks, ...todosData.todos]
+              }
             }
+          } catch (err) {
+            console.error('Failed to fetch fallback todos:', err)
           }
-        } catch (err) {
-          console.error('Failed to fetch todos:', err)
         }
 
         // Re-append any optimistic todos that are still in-flight and not yet
@@ -195,43 +211,55 @@ export function useTasks(
     })
   }, [fetchCalendarData])
 
-  // Real-time SSE stream subscription & hybrid polling fallback
+  // Real-time Ably WebSocket subscription & adaptive background polling
   useEffect(() => {
     if (!calendarId) return
 
-    let eventSource: EventSource | null = null
+    let ablySub: RealtimeSubscription | null = null
 
     try {
-      const pass = passcodeRef.current
-      const streamUrl = `/api/calendars/${calendarId}/stream${pass ? `?passcode=${encodeURIComponent(pass)}` : ''}`
-      eventSource = new EventSource(streamUrl)
+      const pass = getPasscode()
+      ablySub = subscribeToCalendarRealtime(calendarId, pass, (payload) => {
+        // Echo suppression: if this tab made the mutation, skip redundant refetch
+        if (payload.clientMutationId && localMutationIdsRef.current.has(payload.clientMutationId)) {
+          localMutationIdsRef.current.delete(payload.clientMutationId)
+          return
+        }
 
-      eventSource.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data)
-          if (payload.type === 'TASKS_MUTATED' || payload.type === 'PRIVACY_UPDATED' || payload.type === 'CALENDAR_UPDATED') {
-            fetchCalendarData(false)
-          }
-        } catch {}
-      }
-
-      eventSource.onerror = () => {
-        setSyncStatus('synced') // Fallback to periodic sync on serverless connection drops
-      }
-
-      eventSource.onopen = () => {
-        setSyncStatus('synced')
-      }
-    } catch {
-      queueMicrotask(() => {
-        setSyncStatus('synced')
+        if (
+          payload.type === 'TASKS_MUTATED' ||
+          payload.type === 'TODOS_MUTATED' ||
+          payload.type === 'PRIVACY_UPDATED' ||
+          payload.type === 'CALENDAR_UPDATED'
+        ) {
+          fetchCalendarData(false)
+        }
       })
+    } catch (err) {
+      console.warn('Realtime subscription notice:', err)
     }
 
-    // Hybrid background polling loop (every 3.5 seconds) to ensure real-time multi-device sync across serverless processes
-    const pollInterval = setInterval(() => {
-      fetchCalendarData(false)
-    }, 3500)
+    // Adaptive fallback polling:
+    // When tab is hidden: 60s background sanity poll
+    // When tab is active: 60s if Ably connected, 20s if Ably disconnected
+    const getPollIntervalMs = () => {
+      const isHidden = typeof document !== 'undefined' && document.hidden
+      if (isHidden) return 60000 // 60s gentle background poll
+      const isConnected = ablySub?.isConnected() ?? false
+      return isConnected ? 60000 : 20000
+    }
+
+    let timerId: ReturnType<typeof setTimeout> | null = null
+
+    const scheduleNextPoll = () => {
+      timerId = setTimeout(() => {
+        fetchCalendarData(false).finally(() => {
+          scheduleNextPoll()
+        })
+      }, getPollIntervalMs())
+    }
+
+    scheduleNextPoll()
 
     // Sync on tab focus / visibility change
     const handleVisibilityChange = () => {
@@ -252,15 +280,17 @@ export function useTasks(
     window.addEventListener('storage', handleStorageChange)
 
     return () => {
-      if (eventSource) {
-        eventSource.close()
+      if (ablySub) {
+        ablySub.close()
       }
-      clearInterval(pollInterval)
+      if (timerId) {
+        clearTimeout(timerId)
+      }
       window.removeEventListener('focus', handleVisibilityChange)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [calendarId, fetchCalendarData])
+  }, [calendarId, getPasscode, fetchCalendarData])
 
   const saveTask = useCallback(
     async (formData: TaskModalFormData) => {
@@ -311,6 +341,7 @@ export function useTasks(
       if (calendarId) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -325,6 +356,7 @@ export function useTasks(
               action: 'upsert',
               weekStartDate: selectedWeek,
               task: updatedTask,
+              clientMutationId,
             }),
             cache: 'no-store',
           })
@@ -344,7 +376,7 @@ export function useTasks(
         })
       }
     },
-    [calendarId, selectedWeek, tasks, getPasscode]
+    [calendarId, selectedWeek, tasks, getPasscode, registerLocalMutation]
   )
 
   const deleteTask = useCallback(
@@ -356,6 +388,7 @@ export function useTasks(
       if (calendarId) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -369,6 +402,7 @@ export function useTasks(
             body: JSON.stringify({
               action: 'delete',
               taskId,
+              clientMutationId,
             }),
             cache: 'no-store',
           })
@@ -388,7 +422,7 @@ export function useTasks(
         })
       }
     },
-    [calendarId, getPasscode]
+    [calendarId, getPasscode, registerLocalMutation]
   )
 
   const toggleComplete = useCallback(
@@ -408,6 +442,7 @@ export function useTasks(
           }
 
           if (calendarId) {
+            const clientMutationId = registerLocalMutation()
             const headers: Record<string, string> = { 'Content-Type': 'application/json' }
             const pass = getPasscode()
             if (pass) {
@@ -421,6 +456,7 @@ export function useTasks(
                 action: 'upsert',
                 weekStartDate: selectedWeek,
                 task: updated,
+                clientMutationId,
               }),
               cache: 'no-store',
             }).catch(() => {})
@@ -436,7 +472,7 @@ export function useTasks(
         return nextTasks
       })
     },
-    [calendarId, selectedWeek, getPasscode]
+    [calendarId, selectedWeek, getPasscode, registerLocalMutation]
   )
 
   const copyPreviousWeekTasks = useCallback(async () => {
@@ -546,6 +582,7 @@ export function useTasks(
       if (calendarId) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -559,6 +596,7 @@ export function useTasks(
             body: JSON.stringify({
               action: 'create_todo',
               task: newTodo,
+              clientMutationId,
             }),
             cache: 'no-store',
           })
@@ -588,7 +626,7 @@ export function useTasks(
 
       return newTodo
     },
-    [calendarId, unscheduledTasks, getPasscode]
+    [calendarId, unscheduledTasks, getPasscode, registerLocalMutation]
   )
 
   const toggleTodoComplete = useCallback(
@@ -602,6 +640,7 @@ export function useTasks(
       if (calendarId) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -616,6 +655,7 @@ export function useTasks(
               action: 'update_todo',
               taskId: todoId,
               task: { completed: updatedTodo.completed },
+              clientMutationId,
             }),
             cache: 'no-store',
           })
@@ -630,7 +670,7 @@ export function useTasks(
         }
       }
     },
-    [calendarId, tasks, getPasscode]
+    [calendarId, tasks, getPasscode, registerLocalMutation]
   )
 
   const promoteTodoToScheduled = useCallback(
@@ -658,6 +698,7 @@ export function useTasks(
       if (calendarId && selectedWeek) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -679,6 +720,7 @@ export function useTasks(
                 duration: scheduleData.duration,
                 days: scheduleData.days,
               },
+              clientMutationId,
             }),
             cache: 'no-store',
           })
@@ -696,7 +738,7 @@ export function useTasks(
 
       return promotedTask
     },
-    [calendarId, selectedWeek, tasks, getPasscode]
+    [calendarId, selectedWeek, tasks, getPasscode, registerLocalMutation]
   )
 
   const reorderTodos = useCallback(
@@ -713,6 +755,7 @@ export function useTasks(
       if (calendarId) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -723,7 +766,7 @@ export function useTasks(
           const res = await fetch(url, {
             method: 'POST',
             headers,
-            body: JSON.stringify({ todoIds: reorderedIds }),
+            body: JSON.stringify({ todoIds: reorderedIds, clientMutationId }),
             cache: 'no-store',
           })
 
@@ -737,7 +780,7 @@ export function useTasks(
         }
       }
     },
-    [calendarId, getPasscode]
+    [calendarId, getPasscode, registerLocalMutation]
   )
 
   const updateTodoCategory = useCallback(
@@ -747,6 +790,7 @@ export function useTasks(
       if (calendarId) {
         setSyncStatus('syncing')
         try {
+          const clientMutationId = registerLocalMutation()
           const headers: Record<string, string> = { 'Content-Type': 'application/json' }
           const pass = getPasscode()
           if (pass) {
@@ -761,6 +805,7 @@ export function useTasks(
               action: 'update_todo',
               taskId: todoId,
               task: { category },
+              clientMutationId,
             }),
             cache: 'no-store',
           })
@@ -775,7 +820,7 @@ export function useTasks(
         }
       }
     },
-    [calendarId, getPasscode]
+    [calendarId, getPasscode, registerLocalMutation]
   )
 
   const updateCalendarTitle = useCallback(

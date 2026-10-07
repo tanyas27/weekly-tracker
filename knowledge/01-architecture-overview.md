@@ -85,9 +85,11 @@ weekly-tracker/
 
 ## 4. Architectural Patterns & Decisions
 
-### 4.1 Hybrid Server/Client Architecture
+### 4.1 Hybrid Server/Client Architecture & Real-Time Sync
 - **Root Landing Page (`app/page.tsx`)**: Fully server-rendered for optimal LCP performance, indexing, and SEO meta tags.
-- **Calendar Workspace (`app/c/[calendarId]/page.tsx`)**: Interactive `'use client'` component operating with local state, SSE stream updates, and passcode protection.
+- **Calendar Workspace (`app/c/[calendarId]/page.tsx`)**: Interactive `'use client'` component operating with local state, Ably WebSocket push sync, and passcode protection.
+- **Real-Time Pub/Sub Architecture**: Uses Ably Realtime via direct browser WebSockets authenticated through `/api/realtime/token`. Server routes broadcast events via Ably REST in <20ms, eliminating Vercel Fluid compute holding. Long-lived SSE compute route (`/api/calendars/[calendarId]/stream`) is deprecated/terminated with 204.
+- **Consolidated Payloads**: `GET /api/calendars/[calendarId]` delivers both scheduled tasks and unscheduled backlog todos in a single request, cutting function invocations in half.
 - **Generator Route (`app/c/new/page.tsx`)**: Server-side redirect producing cryptographically random nanoid calendar tokens.
 - Real-time minute interval tickers (`setInterval`).
 - Dynamic time-positioning algorithms (`getCurrentTimePosition`, `getTaskPosition`).

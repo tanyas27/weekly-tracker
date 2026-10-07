@@ -109,7 +109,9 @@ export function Header({
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    setIsMounted(true)
+    queueMicrotask(() => {
+      setIsMounted(true)
+    })
   }, [])
 
   useEffect(() => {

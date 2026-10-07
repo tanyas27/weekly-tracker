@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-10-07 - Real-Time Pub/Sub Migration to Ably & Serverless Compute Optimization
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Resolved Vercel Fluid Provisioned Memory and Active CPU exhaustion (which had reached 224+ GB-Hrs on free tier). Decommissioned billable long-lived Server-Sent Events stream route (`/api/calendars/[calendarId]/stream`) by converting to immediate 204 response. Integrated Ably Realtime for multi-device sync via direct browser WebSockets authenticated via `/api/realtime/token` with private calendar passcode validation. Consolidated unscheduled todos directly into `GET /api/calendars/[calendarId]`, eliminating 50% of polling API invocations. Implemented `clientMutationId` echo suppression across task and todo mutations. Replaced unthrottled 3.5s interval with smart adaptive polling (60s background, 20s active fallback if Ably is unconfigured, immediate sync on tab focus or storage changes). Added Vitest unit tests in `lib/__tests__/ably-realtime.test.ts`. Updated `knowledge/01-architecture-overview.md` and `README.md`.
+
 ### 2026-08-15 - Lazy Session Creation & Monday-Normalized Week Navigation
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.7 Flash)
 - **Verifier:** daman

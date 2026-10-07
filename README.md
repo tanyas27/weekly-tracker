@@ -68,6 +68,9 @@ To let people generate a shareable calendar link that syncs across devices, prov
 ```bash
 # .env.local
 DATABASE_URL="postgresql://<user>:<password>@<host>/<db>?sslmode=require"
+
+# (Optional) Real-time multi-device sync via Ably (free tier: 6M msgs/month, zero Vercel compute)
+ABLY_API_KEY="your-ably-api-key"
 ```
 
 Then create the required tables by running the schema against your database:
@@ -76,7 +79,7 @@ Then create the required tables by running the schema against your database:
 psql "$DATABASE_URL" -f lib/db/schema.sql
 ```
 
-This creates the `calendars`, `sessions`, and `tasks` tables used for shareable/private calendars. If `DATABASE_URL` is not set, the app automatically falls back to local-only mode — no code changes needed.
+This creates the `calendars`, `sessions`, and `tasks` tables used for shareable/private calendars. If `DATABASE_URL` is not set, the app automatically falls back to local-only mode — no code changes needed. If `ABLY_API_KEY` is not set, the app gracefully falls back to adaptive smart polling.
 
 ---
 

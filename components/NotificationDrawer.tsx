@@ -40,7 +40,11 @@ export default function NotificationDrawer({
   const [activeTab, setActiveTab] = useState<'history' | 'settings'>('history');
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    queueMicrotask(() => {
+      setMounted(true);
+    });
+  }, []);
 
   // Lock body scroll on mobile when open
   useEffect(() => {

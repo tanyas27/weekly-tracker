@@ -518,7 +518,7 @@ export async function updateTodo(task: {
   if (!sql) return null;
   try {
     // Build update object based on provided fields
-    const updates: Record<string, any> = { updated_at: new Date().toISOString() };
+    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     if (task.name !== undefined) {
       updates.name = sanitizeTaskName(task.name);

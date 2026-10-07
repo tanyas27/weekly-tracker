@@ -42,7 +42,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { todoIds } = body;
+    const { todoIds, clientMutationId } = body;
 
     if (!Array.isArray(todoIds) || todoIds.length === 0) {
       return NextResponse.json({ error: 'todoIds array required' }, { status: 400, headers: NO_CACHE_HEADERS });
@@ -60,7 +60,7 @@ export async function POST(
       return NextResponse.json({ error: 'Failed to update sort order' }, { status: 500, headers: NO_CACHE_HEADERS });
     }
 
-    broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
+    broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId, clientMutationId });
     return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('API /api/calendars/[calendarId]/todos/reorder POST error:', error);

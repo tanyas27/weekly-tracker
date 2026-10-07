@@ -8,8 +8,14 @@ const globalBroadcaster =
 globalBroadcaster.setMaxListeners(100);
 (globalThis as unknown as Record<string, unknown>).__calendarBroadcaster = globalBroadcaster;
 
+import { publishCalendarEvent } from '@/lib/realtime/ably-server';
+
 export function broadcastCalendarUpdate(calendarId: string, payload: unknown) {
   globalBroadcaster.emit(`update:${calendarId}`, payload);
+  // Also broadcast to Ably real-time subscribers if configured
+  if (payload && typeof payload === 'object') {
+    publishCalendarEvent(calendarId, 'update', payload as Record<string, unknown>).catch(() => {});
+  }
 }
 
 export function subscribeCalendarUpdates(calendarId: string, listener: (payload: unknown) => void) {

@@ -49,7 +49,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    const { action, weekStartDate, task, taskId, sourceSessionId } = body;
+    const { action, weekStartDate, task, taskId, sourceSessionId, clientMutationId } = body;
 
     // Handle todo-specific actions (don't require session)
     if (action === 'create_todo') {
@@ -63,7 +63,7 @@ export async function POST(
         category: task.category,
         sortOrder: task.sortOrder,
       });
-      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
+      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId, clientMutationId });
       return NextResponse.json({ success: true, task: newTodo }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -79,7 +79,7 @@ export async function POST(
         category: task?.category,
         sortOrder: task?.sortOrder,
       });
-      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
+      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId, clientMutationId });
       return NextResponse.json({ success: true, task: updatedTodo }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -103,8 +103,8 @@ export async function POST(
         duration: task.duration,
         days: task.days,
       });
-      broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
-      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId });
+      broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId, clientMutationId });
+      broadcastCalendarUpdate(calendarId, { type: 'TODOS_MUTATED', calendarId, clientMutationId });
       return NextResponse.json({ success: true, task: promotedTask }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -127,7 +127,7 @@ export async function POST(
       }
 
       const copied = await copySessionTasks(calendarId, prevSession.id, session.id);
-      broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
+      broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId, clientMutationId });
       return NextResponse.json({ success: true, count: copied.length }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -137,7 +137,7 @@ export async function POST(
         return NextResponse.json({ error: 'Task ID required' }, { status: 400, headers: NO_CACHE_HEADERS });
       }
       await dbDeleteTask(idToDelete, calendarId);
-      broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
+      broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId, clientMutationId });
       return NextResponse.json({ success: true }, { headers: NO_CACHE_HEADERS });
     }
 
@@ -162,7 +162,7 @@ export async function POST(
       reminderOffset: task.reminderOffset,
     });
 
-    broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId });
+    broadcastCalendarUpdate(calendarId, { type: 'TASKS_MUTATED', calendarId, clientMutationId });
     return NextResponse.json({ success: true, task: savedTask }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error('API /api/calendars/[calendarId]/tasks POST error:', error);

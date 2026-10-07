@@ -4,6 +4,7 @@ import {
   getSession,
   getCalendarSessions,
   getTasksForSession,
+  getUnscheduledTasks,
   updateCalendarTitle,
 } from '@/lib/db';
 import { broadcastCalendarUpdate } from '@/lib/db/events';
@@ -40,6 +41,7 @@ export async function GET(
           sessions: [],
           activeSession: null,
           tasks: [],
+          todos: [],
         },
         { headers: NO_CACHE_HEADERS }
       );
@@ -58,14 +60,19 @@ export async function GET(
             sessions: [],
             activeSession: null,
             tasks: [],
+            todos: [],
           },
           { headers: NO_CACHE_HEADERS }
         );
       }
     }
 
-    const activeSession = await getSession(calendarId, weekStartDate);
-    const sessions = await getCalendarSessions(calendarId);
+    const [activeSession, sessions, rawTodos] = await Promise.all([
+      getSession(calendarId, weekStartDate),
+      getCalendarSessions(calendarId),
+      getUnscheduledTasks(calendarId),
+    ]);
+
     const rawTasks = activeSession ? await getTasksForSession(activeSession.id) : [];
 
     const tasks = rawTasks.map((t) => ({
@@ -82,6 +89,22 @@ export async function GET(
       reminderOffset: t.reminder_offset !== undefined && t.reminder_offset !== null ? Number(t.reminder_offset) : undefined,
     }));
 
+    const todos = rawTodos.map((t) => ({
+      id: t.id,
+      name: t.name,
+      startTime: t.start_time || '',
+      endTime: t.end_time || '',
+      startHour: Number(t.start_hour) || 0,
+      duration: Number(t.duration) || 0,
+      completed: t.completed,
+      completedDays: t.completed_days || [],
+      days: t.days || [],
+      color: t.color,
+      isScheduled: false,
+      category: t.category || null,
+      sortOrder: t.sort_order !== null && t.sort_order !== undefined ? Number(t.sort_order) : undefined,
+    }));
+
     return NextResponse.json(
       {
         calendar: {
@@ -94,6 +117,7 @@ export async function GET(
         sessions,
         activeSession,
         tasks,
+        todos,
       },
       { headers: NO_CACHE_HEADERS }
     );
