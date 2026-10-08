@@ -26,6 +26,12 @@ describe('Task Icons Registry', () => {
     expect(getTaskIcon('bike')).toBeTruthy()
   })
 
+  it('handles case-insensitive and underscore-normalized IDs gracefully', () => {
+    expect(getTaskIcon('Laptop')).toBeTruthy()
+    expect(getTaskIcon('BOOK_OPEN')).toBeTruthy()
+    expect(getTaskIcon('coffee ')).toBeTruthy()
+  })
+
   it('returns null gracefully for invalid, empty, or unknown IDs', () => {
     expect(getTaskIcon(undefined)).toBeNull()
     expect(getTaskIcon(null)).toBeNull()

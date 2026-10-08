@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-10-08 - Full Unicode Emoji & Icon Persistence, README & Public Showcase Assets
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Fixed issue where task icons/emojis were not returned in `GET /api/calendars/[calendarId]` route mapping. Added custom Unicode emoji input (`e.g. 🎯`) to `TaskModal.tsx` alongside the 20 Lucide vector presets. Updated `<TaskIcon />` to render both normalized Lucide icons and raw Unicode emojis inline. Added resilient connection retry and IPv4 precedence (`dns.setDefaultResultOrder`) for Neon serverless Postgres driver. Updated `README.md` feature list, project structure, and generated high-resolution showcase screenshot assets (`public/screenshot-desktop.png`, `public/screenshot-modal.png`, `public/screenshot-mobile.png`, `public/app-preview.png`).
+
 ### 2026-10-08 - Preselected Task Vector Icons (Lucide-React)
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
 - **Verifier:** daman

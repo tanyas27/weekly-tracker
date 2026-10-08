@@ -11,16 +11,19 @@ tags:
   - localstorage
   - reactivity
 sources:
-  - app/page.tsx
+  - types/task.ts
+  - lib/task-icons.tsx
+  - hooks/useTasks.ts
+  - lib/db/index.ts
 generated:
   agent: Antigravity AI
   model: Gemini 3.6 Flash
-  timestamp: 2026-08-10T20:33:00+05:30
+  timestamp: 2026-10-08T19:30:00+05:30
 verified:
   by: daman
-  date: 2026-08-10
+  date: 2026-10-08
   status: verified
-stale_after: 2027-02-10
+stale_after: 2027-04-08
 status: active
 ---
 
@@ -28,13 +31,13 @@ status: active
 
 ## 1. Primary TypeScript Interfaces
 
-All core task and calendar data structures are defined in [app/page.tsx](../app/page.tsx).
+All core task and calendar data structures are defined in [types/task.ts](../types/task.ts) and exported across components and database modules.
 
 ### 1.1 Active Task (`Task`)
 Represents an active task rendered in memory across the weekly schedule grid.
 ```typescript
 interface Task {
-  id: string          // Unique identifier (timestamp string e.g. "1723456789000")
+  id: string          // Unique identifier (timestamp or nanoid string)
   name: string        // Task title / description string
   startTime: string   // Formatted start time string (e.g. "09:00")
   endTime: string     // Calculated end time string (e.g. "10:30")
@@ -44,11 +47,13 @@ interface Task {
   completedDays: string[] // Array of day abbreviations on which task is completed e.g. ["MON"]
   days: string[]      // Array of day abbreviations e.g. ["MON", "WED", "FRI"]
   color: string       // Tailwind CSS background color class string e.g. "bg-[#FFF9C4]"
+  reminderOffset?: number | null // Notification lead time in minutes (null = disabled, undefined = default)
+  icon?: string | null // Lucide icon ID (e.g. 'laptop', 'coffee') or custom Unicode emoji ('🎯')
 }
 ```
 
 ### 1.2 Persisted Storage Task (`StoredTask`)
-Represents the legacy and active schema format stored inside `localStorage`:
+Represents the persisted schema format stored inside `localStorage` and synchronized with the PostgreSQL database:
 ```typescript
 interface StoredTask {
   id: string
@@ -62,6 +67,8 @@ interface StoredTask {
   day?: string        // Legacy single-day field (for backwards compatibility)
   days?: string[]     // Multi-day selection array
   color: string
+  reminderOffset?: number | null
+  icon?: string | null
 }
 ```
 

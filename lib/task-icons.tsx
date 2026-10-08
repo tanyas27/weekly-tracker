@@ -53,12 +53,13 @@ export const TASK_ICONS: TaskIconDefinition[] = [
 ]
 
 const TASK_ICON_MAP = new Map<string, LucideIcon>(
-  TASK_ICONS.map((item) => [item.id, item.icon])
+  TASK_ICONS.map((item) => [item.id.toLowerCase(), item.icon])
 )
 
 export function getTaskIcon(iconId?: string | null): LucideIcon | null {
   if (!iconId) return null
-  return TASK_ICON_MAP.get(iconId) || null
+  const normalized = iconId.trim().toLowerCase().replace(/_/g, '-')
+  return TASK_ICON_MAP.get(normalized) || null
 }
 
 interface TaskIconProps {
@@ -67,7 +68,18 @@ interface TaskIconProps {
 }
 
 export function TaskIcon({ icon, className = 'w-4 h-4' }: TaskIconProps) {
+  if (!icon) return null
   const IconComponent = getTaskIcon(icon)
-  if (!IconComponent) return null
-  return React.createElement(IconComponent, { className, 'aria-hidden': 'true' })
+  if (IconComponent) {
+    return React.createElement(IconComponent, { className, 'aria-hidden': 'true' })
+  }
+  // Render literal Unicode emoji or text symbol
+  return (
+    <span
+      className={`inline-flex items-center justify-center leading-none select-none text-center ${className}`}
+      aria-hidden="true"
+    >
+      {icon}
+    </span>
+  )
 }

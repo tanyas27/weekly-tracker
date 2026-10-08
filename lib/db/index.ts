@@ -1,5 +1,38 @@
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig, type NeonQueryFunction } from '@neondatabase/serverless';
 import { nanoid } from 'nanoid';
+import dns from 'node:dns';
+
+// Ensure Node.js prioritizes IPv4 over unroutable/stalled IPv6 addresses
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {}
+
+// Configure Neon HTTP fetch with automatic retry on transient network/connect timeouts
+const defaultFetch = globalThis.fetch;
+neonConfig.fetchFunction = async (
+  url: Parameters<typeof defaultFetch>[0],
+  options?: Parameters<typeof defaultFetch>[1]
+) => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    try {
+      return await defaultFetch(url, options);
+    } catch (err: unknown) {
+      lastError = err;
+      const errorObj = err as { message?: string; sourceError?: { code?: string }; code?: string } | null;
+      const isTransient =
+        errorObj?.message?.includes('fetch failed') ||
+        errorObj?.sourceError?.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        errorObj?.sourceError?.code === 'UND_ERR_SOCKET' ||
+        errorObj?.code === 'UND_ERR_CONNECT_TIMEOUT';
+      if (!isTransient || attempt === 2) {
+        throw err;
+      }
+      await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+  throw lastError;
+};
 
 export interface CalendarRow {
   id: string;
@@ -40,28 +73,39 @@ export interface TaskRow {
   sort_order?: number | null;
 }
 
-function getSql() {
+let cachedSql: NeonQueryFunction<false, false> | null = null;
+function getSql(): NeonQueryFunction<false, false> | null {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     return null;
   }
-  return neon(connectionString);
+  if (!cachedSql) {
+    cachedSql = neon(connectionString);
+  }
+  return cachedSql;
 }
 
 let hasInitializedTasksTable = false;
-export async function ensureTasksSchema() {
+let ensureTasksSchemaPromise: Promise<void> | null = null;
+
+export async function ensureTasksSchema(): Promise<void> {
   if (hasInitializedTasksTable) return;
-  const sql = getSql();
-  if (!sql) return;
-  try {
-    await sql`
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_offset INTEGER;
-      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS icon TEXT;
-    `;
-    hasInitializedTasksTable = true;
-  } catch (error) {
-    console.error('Failed to ensure tasks schema:', error);
+  if (!ensureTasksSchemaPromise) {
+    ensureTasksSchemaPromise = (async () => {
+      const sql = getSql();
+      if (!sql) return;
+      try {
+        await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_offset INTEGER;`;
+        await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS icon TEXT;`;
+        hasInitializedTasksTable = true;
+      } catch (error) {
+        console.error('Failed to ensure tasks schema:', error);
+      } finally {
+        ensureTasksSchemaPromise = null;
+      }
+    })();
   }
+  return ensureTasksSchemaPromise;
 }
 
 export function sanitizeTaskName(name: string): string {
@@ -657,7 +701,7 @@ export async function bulkUpdateSortOrder(
   try {
     // Build CASE statement for efficient bulk update
     const caseStatements = ordering
-      .map((item, idx) => `WHEN id = '${item.id}' THEN ${item.sortOrder}`)
+      .map((item) => `WHEN id = '${item.id}' THEN ${item.sortOrder}`)
       .join(' ');
 
     const ids = ordering.map(item => item.id);
