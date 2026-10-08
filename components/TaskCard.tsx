@@ -1,6 +1,7 @@
 import React from 'react'
 import { Task } from '@/types/task'
 import { getTaskPosition } from '@/lib/time-utils'
+import { setActiveDragTask } from '@/lib/drag-state'
 
 interface TaskCardProps {
   task: Task
@@ -51,11 +52,21 @@ export const TaskCard = React.memo(function TaskCard({
           : '3px 3px 8px rgba(0,0,0,0.14), 0 1px 3px rgba(0,0,0,0.08)',
       }}
       onDragStart={(e) => {
+        setActiveDragTask({
+          id: task.id,
+          name: task.name,
+          duration: task.duration,
+          fromDay: dayShort,
+          startHour: task.startHour,
+        })
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('taskId', task.id)
         e.dataTransfer.setData('fromDay', dayShort)
         e.dataTransfer.setData('taskDuration', String(task.duration))
         e.dataTransfer.setData('taskName', task.name)
+      }}
+      onDragEnd={() => {
+        setActiveDragTask(null)
       }}
       onMouseEnter={(e) => (e.currentTarget.style.zIndex = '100')}
       onMouseLeave={(e) => (e.currentTarget.style.zIndex = String(overlapIndex + 1))}

@@ -5,11 +5,13 @@ import {
   DEFAULT_ACTIVE_HOURS,
   getTimeSlotsForRange,
   getCurrentTimePosition,
+  decimalHoursToTimeString,
 } from '@/lib/time-utils'
 import { computeTaskOverlapLayout } from '@/lib/task-overlap'
 import { SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/types/task'
 import { TaskCard } from './TaskCard'
+import { getActiveDragTask, setActiveDragTask } from '@/lib/drag-state'
 
 interface ScheduleGridProps {
   days: DayInfo[]
@@ -18,10 +20,10 @@ interface ScheduleGridProps {
   currentTimeHour: number
   isDark: boolean
   activeHours?: ActiveHoursPreference
-  onOpenAddModal: (day: string, timeSlotIndex: number) => void
+  onOpenAddModal: (day: string, hour: number) => void
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
-  onMoveTask: (taskId: string, fromDay: string, toDay: string, slotIndex: number) => void
+  onMoveTask: (taskId: string, fromDay: string, toDay: string, targetHour: number) => void
   scrollRef?: React.RefObject<HTMLDivElement | null>
   onScroll?: (e: React.UIEvent<HTMLDivElement>) => void
 }
@@ -34,10 +36,10 @@ interface DayColumnProps {
   minWidthClassName: string
   startHour: number
   visibleSlotCount: number
-  onOpenAddModal: (day: string, timeSlotIndex: number) => void
+  onOpenAddModal: (day: string, hour: number) => void
   onOpenEditModal: (task: Task) => void
   onToggleComplete: (taskId: string, day: string, e: React.MouseEvent) => void
-  onMoveTask: (taskId: string, fromDay: string, toDay: string, slotIndex: number) => void
+  onMoveTask: (taskId: string, fromDay: string, toDay: string, targetHour: number) => void
 }
 
 // Single day's timeline column; reused for both the mobile single-day view and the desktop 7-day view.
@@ -54,7 +56,7 @@ const DayColumn = React.memo(function DayColumn({
   onToggleComplete,
   onMoveTask,
 }: DayColumnProps) {
-  const [dragOverInfo, setDragOverInfo] = React.useState<{ slotIndex: number; duration: number; name: string } | null>(null)
+  const [dragOverInfo, setDragOverInfo] = React.useState<{ slotIndex: number; timeHour: number } | null>(null)
 
   return (
     <div
@@ -81,13 +83,11 @@ const DayColumn = React.memo(function DayColumn({
                   ? `border-white/[0.05] hover:bg-white/[0.06] ${isCurrentHour ? 'bg-[#BDCC8D]/[0.10]' : ''}`
                   : `border-white/25 hover:bg-white/25 ${isCurrentHour ? 'bg-[#2D5F3E]/[0.07]' : ''}`
             }`}
-            onClick={() => onOpenAddModal(day.short, idx)}
+            onClick={() => onOpenAddModal(day.short, timeHour)}
             onDragOver={(e) => {
               e.preventDefault()
               e.dataTransfer.dropEffect = 'move'
-              const duration = parseFloat(e.dataTransfer.getData('taskDuration')) || 1
-              const name = e.dataTransfer.getData('taskName') || ''
-              setDragOverInfo({ slotIndex: idx, duration, name })
+              setDragOverInfo({ slotIndex: idx, timeHour })
             }}
             onDragLeave={(e) => {
               if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverInfo(null)
@@ -95,9 +95,11 @@ const DayColumn = React.memo(function DayColumn({
             onDrop={(e) => {
               e.preventDefault()
               setDragOverInfo(null)
-              const taskId = e.dataTransfer.getData('taskId')
-              const fromDay = e.dataTransfer.getData('fromDay')
-              if (taskId) onMoveTask(taskId, fromDay, day.short, idx)
+              const activeDrag = getActiveDragTask()
+              const taskId = e.dataTransfer.getData('taskId') || activeDrag?.id
+              const fromDay = e.dataTransfer.getData('fromDay') || activeDrag?.fromDay || day.short
+              setActiveDragTask(null)
+              if (taskId) onMoveTask(taskId, fromDay, day.short, timeHour)
             }}
           >
             {!isDragOver && (
@@ -112,23 +114,41 @@ const DayColumn = React.memo(function DayColumn({
       })}
 
       {/* Optimistic Ghost Drag Card */}
-      {dragOverInfo && (
-        <div
-          className={`absolute left-1 right-1 rounded-lg border-2 border-dashed z-40 pointer-events-none flex items-center px-3 transition-all animate-in fade-in duration-100 ${
-            isDark
-              ? 'border-[#BDCC8D] bg-[#BDCC8D]/20 text-[#BDCC8D] shadow-md shadow-[#BDCC8D]/10'
-              : 'border-[#2D5F3E] bg-[#2D5F3E]/15 text-[#2D5F3E] shadow-md shadow-[#2D5F3E]/10'
-          }`}
-          style={{
-            top: `${dragOverInfo.slotIndex * SLOT_HEIGHT_PX + 2}px`,
-            height: `${Math.max(1, dragOverInfo.duration) * SLOT_HEIGHT_PX - 4}px`,
-          }}
-        >
-          <span className="text-xs font-bold truncate">
-            {dragOverInfo.name ? `Move "${dragOverInfo.name}"` : 'Drop task here'}
-          </span>
-        </div>
-      )}
+      {dragOverInfo && (() => {
+        const activeDrag = getActiveDragTask()
+        const duration = activeDrag?.duration ?? 1
+        const name = activeDrag?.name ?? ''
+        const origMinutes = activeDrag ? Math.round((activeDrag.startHour - Math.floor(activeDrag.startHour)) * 60) : 0
+        const maxAllowedStartHour = Math.max(0, 24 - duration)
+        const projectedStartHour = Math.max(0, Math.min(maxAllowedStartHour, dragOverInfo.timeHour + origMinutes / 60))
+        const projectedEndHour = Math.min(24, projectedStartHour + duration)
+        const topPx = (projectedStartHour - startHour) * SLOT_HEIGHT_PX + 2
+        const heightPx = Math.max(duration * SLOT_HEIGHT_PX - 4, 46)
+        const timeRangeLabel = `${decimalHoursToTimeString(projectedStartHour)} – ${decimalHoursToTimeString(projectedEndHour)}`
+
+        return (
+          <div
+            className={`absolute left-1 right-1 rounded-lg border-2 border-dashed z-40 pointer-events-none flex flex-col justify-center px-3 transition-all animate-in fade-in duration-100 ${
+              isDark
+                ? 'border-[#BDCC8D] bg-[#BDCC8D]/20 text-[#BDCC8D] shadow-md shadow-[#BDCC8D]/10'
+                : 'border-[#2D5F3E] bg-[#2D5F3E]/15 text-[#2D5F3E] shadow-md shadow-[#2D5F3E]/10'
+            }`}
+            style={{
+              top: `${topPx}px`,
+              height: `${heightPx}px`,
+            }}
+          >
+            <div className="flex items-center justify-between gap-2 overflow-hidden">
+              <span className="text-xs font-bold truncate">
+                {name ? `Move "${name}"` : 'Move task here'}
+              </span>
+              <span className="text-[10px] font-semibold opacity-85 shrink-0 px-1.5 py-0.5 rounded bg-white/20">
+                {timeRangeLabel}
+              </span>
+            </div>
+          </div>
+        )
+      })()}
 
       {tasks.map((task) => {
         const overlapLayout = computeTaskOverlapLayout(tasks, task)

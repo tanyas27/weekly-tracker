@@ -250,3 +250,22 @@ export function getCurrentHour(): number {
   const now = new Date()
   return now.getHours() + now.getMinutes() / 60
 }
+
+/**
+ * Calculates new start time when rescheduling a task via drag and drop.
+ * - Preserves the task's original minute offset (e.g. 9:30 dropped on 11:00 becomes 11:30).
+ * - Caps start time so the task fits before midnight (24:00).
+ */
+export function calculateRescheduledStartTime(
+  targetHour: number,
+  taskStartHour: number,
+  taskDuration: number
+): string {
+  const origMinutes = Math.round((taskStartHour - Math.floor(taskStartHour)) * 60)
+  const decimalMinutes = origMinutes / 60
+  const maxAllowedStartHour = Math.max(0, 24 - taskDuration)
+  const calculatedStartHour = Math.min(maxAllowedStartHour, targetHour + decimalMinutes)
+  const finalStartHour = Math.max(0, calculatedStartHour)
+  return decimalHoursToTimeString(finalStartHour)
+}
+

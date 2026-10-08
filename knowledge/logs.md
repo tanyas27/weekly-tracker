@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-10-08 - Drag-and-Drop Active Hours Rescheduling & Ghost Preview Fix
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Fixed issue where drag-and-drop rescheduling worked in 24h mode but placed tasks into shifted/wrong hours when using Active Hours presets (e.g. Standard 6 AM – 11 PM, Early Bird 4 AM – 10 PM). Resolved discrepancy where `ScheduleGrid` dispatched relative slot indices (`idx`) while parent page calculated new start times using an independent `effectiveStartHour` corrupted by unscheduled todos (`isScheduled === false`, `startHour = 0`). Updated `ScheduleGrid` to pass the absolute `targetHour` directly (`timeHour = startHour + idx`) to `onMoveTask` and `openAddModal`. Implemented `calculateRescheduledStartTime` with minute preservation (e.g. 9:30 AM dropped on 11 AM becomes 11:30 AM) and midnight boundary capping (e.g. 2-hour task dropped at 11 PM starts at 10 PM to end before 24:00). Resolved browser dragover `dataTransfer.getData()` restriction with shared in-memory `drag-state.ts` to power rich optimistic ghost cards showing real title, true duration height, and target time badge. Added Vitest unit tests in `lib/__tests__/reschedule.test.ts`.
+
 ### 2026-10-07 - Real-Time Pub/Sub Migration to Ably & Serverless Compute Optimization
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
 - **Verifier:** daman

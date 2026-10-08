@@ -14,6 +14,7 @@ import {
   DEFAULT_ACTIVE_HOURS,
   getStoredActiveHours,
   saveStoredActiveHours,
+  calculateRescheduledStartTime,
 } from '@/lib/time-utils'
 import { SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/lib/task-overlap'
@@ -154,14 +155,6 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     saveStoredActiveHours(newPref)
   }
 
-  const effectiveStartHour = useMemo(() => {
-    let minH = activeHours.startHour
-    for (const t of tasks) {
-      minH = Math.min(minH, Math.floor(t.startHour))
-    }
-    return Math.max(0, minH)
-  }, [tasks, activeHours.startHour])
-
   useEffect(() => {
     const timer = setTimeout(() => {
       if (typeof window !== 'undefined') {
@@ -260,10 +253,10 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     setShowModal(true)
   }
 
-  const openAddModal = (day: string, timeSlotIndex: number) => {
-    const hour = effectiveStartHour + timeSlotIndex
-    const startTime = `${hour.toString().padStart(2, '0')}:00`
-    const colorIndex = (day.charCodeAt(0) + day.charCodeAt(day.length - 1) + hour) % COLORS.length
+  const openAddModal = (day: string, hour: number) => {
+    const safeHour = Math.max(0, Math.min(23, Math.floor(hour)))
+    const startTime = `${safeHour.toString().padStart(2, '0')}:00`
+    const colorIndex = (day.charCodeAt(0) + day.charCodeAt(day.length - 1) + safeHour) % COLORS.length
     setModalData({
       id: '',
       name: '',
@@ -530,16 +523,24 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
               onOpenAddModal={openAddModal}
               onOpenEditModal={openEditModal}
               onToggleComplete={handleToggleComplete}
-              onMoveTask={(taskId, fromDay, toDay, slotIndex) => {
+              onMoveTask={(taskId, fromDay, toDay, targetHour) => {
                 const task = tasks.find((t) => t.id === taskId)
                 if (!task) return
-                const newHour = effectiveStartHour + slotIndex
-                const newStartTime = `${newHour.toString().padStart(2, '0')}:00`
+                const newStartTime = calculateRescheduledStartTime(targetHour, task.startHour, task.duration)
+
                 const updatedDays = task.days.includes(fromDay)
                   ? task.days.map((d) => (d === fromDay ? toDay : d))
                   : [...task.days, toDay]
                 const newDays = Array.from(new Set(updatedDays))
-                saveTask({ id: taskId, name: task.name, days: newDays, startTime: newStartTime, duration: task.duration, color: task.color, reminderOffset: task.reminderOffset })
+                saveTask({
+                  id: taskId,
+                  name: task.name,
+                  days: newDays,
+                  startTime: newStartTime,
+                  duration: task.duration,
+                  color: task.color,
+                  reminderOffset: task.reminderOffset,
+                })
               }}
             />
 
