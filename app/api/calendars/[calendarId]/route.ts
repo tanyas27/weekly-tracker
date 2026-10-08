@@ -87,6 +87,7 @@ export async function GET(
       days: t.days || [],
       color: t.color,
       reminderOffset: t.reminder_offset !== undefined && t.reminder_offset !== null ? Number(t.reminder_offset) : undefined,
+      icon: t.icon || null,
     }));
 
     const todos = rawTodos.map((t) => ({
@@ -103,6 +104,7 @@ export async function GET(
       isScheduled: false,
       category: t.category || null,
       sortOrder: t.sort_order !== null && t.sort_order !== undefined ? Number(t.sort_order) : undefined,
+      icon: t.icon || null,
     }));
 
     return NextResponse.json(
