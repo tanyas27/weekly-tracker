@@ -147,7 +147,7 @@ export function TaskModal({
               </div>
               <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
                 {TASK_ICONS.map((item) => {
-                  const isSelected = modalData.icon === item.id
+                  const isSelected = modalData.icon?.toLowerCase() === item.id.toLowerCase()
                   const IconComp = item.icon
                   return (
                     <button
@@ -176,6 +176,33 @@ export function TaskModal({
                     </button>
                   )
                 })}
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-dashed border-gray-500/20">
+                <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  Or custom emoji:
+                </span>
+                <input
+                  type="text"
+                  maxLength={4}
+                  value={
+                    modalData.icon && !TASK_ICONS.some((t) => t.id === modalData.icon?.toLowerCase())
+                      ? modalData.icon
+                      : ''
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value.trim()
+                    setModalData((prev) => ({
+                      ...prev,
+                      icon: val || null,
+                    }))
+                  }}
+                  placeholder="e.g. 🎯"
+                  className={`w-16 px-2.5 py-1 text-center rounded-lg border text-sm transition-all outline-none ${
+                    isDark
+                      ? 'bg-zinc-800/80 border-zinc-700 text-white placeholder:text-zinc-600 focus:border-[#BDCC8D]'
+                      : 'bg-white/80 border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:border-[#2D5F3E]'
+                  }`}
+                />
               </div>
             </div>
 
