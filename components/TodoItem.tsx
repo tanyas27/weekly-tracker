@@ -6,6 +6,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Task } from '@/types/task'
 import { getCategoryColor, getContrastingTextColor } from '@/lib/todo-utils'
 import { GripVertical, Trash2, X, Check } from 'lucide-react'
+import { TaskIcon } from '@/lib/task-icons'
 
 interface TodoItemProps {
   task: Task
@@ -255,11 +256,14 @@ export function TodoItem({
                   ? 'text-[#c8dea8] hover:bg-[#2d5a2e]/30'
                   : 'text-[#3d2b0a] hover:bg-[#d4a853]/10'
               }
-              break-words leading-snug
+              break-words leading-snug flex items-center gap-1.5
             `}
             title="Double-click to edit"
           >
-            {task.name}
+            {task.icon && (
+              <TaskIcon icon={task.icon} className="w-3.5 h-3.5 shrink-0 opacity-80" />
+            )}
+            <span>{task.name}</span>
           </div>
         )}
       </div>

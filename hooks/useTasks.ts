@@ -38,6 +38,7 @@ const loadTasksFromLocalStorage = (): Task[] => {
         days: taskDays,
         color: task.color,
         reminderOffset: task.reminderOffset,
+        icon: task.icon || null,
       }
     })
   } catch (error) {
@@ -315,6 +316,7 @@ export function useTasks(
           duration: formData.duration,
           color: formData.color || COLORS[0],
           reminderOffset: formData.reminderOffset,
+          icon: formData.icon !== undefined ? formData.icon : existingTask?.icon || null,
           completedDays: updatedCompletedDays,
           completed: updatedCompletedDays.length === formData.days.length && formData.days.length > 0,
         }
@@ -333,6 +335,7 @@ export function useTasks(
           completedDays: [],
           color: formData.color || COLORS[0],
           reminderOffset: formData.reminderOffset,
+          icon: formData.icon || null,
         }
 
         setTasks((prev) => [...prev, updatedTask])

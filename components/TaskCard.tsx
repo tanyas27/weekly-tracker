@@ -2,6 +2,7 @@ import React from 'react'
 import { Task } from '@/types/task'
 import { getTaskPosition } from '@/lib/time-utils'
 import { setActiveDragTask } from '@/lib/drag-state'
+import { TaskIcon } from '@/lib/task-icons'
 
 interface TaskCardProps {
   task: Task
@@ -58,6 +59,7 @@ export const TaskCard = React.memo(function TaskCard({
           duration: task.duration,
           fromDay: dayShort,
           startHour: task.startHour,
+          icon: task.icon,
         })
         e.dataTransfer.effectAllowed = 'move'
         e.dataTransfer.setData('taskId', task.id)
@@ -75,12 +77,15 @@ export const TaskCard = React.memo(function TaskCard({
       <div className={`flex justify-between gap-1 ${isShort ? 'items-center h-full' : 'items-start'}`}>
         <div className="flex-1 min-w-0 overflow-hidden">
           <h3
-            className={`text-[11px] sm:text-xs font-bold text-gray-900 leading-tight break-words ${
+            className={`text-[11px] sm:text-xs font-bold text-gray-900 leading-tight break-words flex items-center gap-1 ${
               isShort ? 'truncate' : ''
             } ${isCompletedOnDay ? 'line-through opacity-70' : ''}`}
             style={{ fontFamily: 'var(--font-handwritten)', wordBreak: 'break-word', overflowWrap: 'break-word' }}
           >
-            {task.name}
+            {task.icon && (
+              <TaskIcon icon={task.icon} className="w-3.5 h-3.5 shrink-0 opacity-80 text-gray-800" />
+            )}
+            <span className={isShort ? 'truncate' : ''}>{task.name}</span>
           </h3>
         </div>
         <button

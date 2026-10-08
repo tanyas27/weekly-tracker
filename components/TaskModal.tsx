@@ -1,8 +1,9 @@
 import React from 'react'
-import { Bell, ChevronUp, ChevronDown } from 'lucide-react'
+import { Bell, ChevronUp, ChevronDown, X } from 'lucide-react'
 import { DayInfo, COLORS } from '../lib/time-utils'
 import { TaskModalFormData } from '../hooks/useTasks'
 import { TimePicker } from './TimePicker'
+import { TASK_ICONS, TaskIcon } from '../lib/task-icons'
 
 interface TaskModalProps {
   showModal: boolean
@@ -88,17 +89,24 @@ export function TaskModal({
               <p className="text-[9px] font-black tracking-[0.2em] uppercase text-gray-600/70 mb-2">
                 {modalData.id ? 'Edit task' : 'New task'}
               </p>
-              <input
-                ref={inputRef}
-                id="task-modal-title"
-                type="text"
-                value={modalData.name}
-                onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
-                className="w-full bg-transparent outline-none text-[1.6rem] leading-tight font-bold text-gray-900 placeholder:text-gray-600/40"
-                style={{ fontFamily: 'var(--font-handwritten)' }}
-                placeholder="What needs doing?"
-                autoFocus
-              />
+              <div className="flex items-center gap-2.5">
+                {modalData.icon && (
+                  <div className="w-9 h-9 rounded-xl bg-black/10 flex items-center justify-center shrink-0 text-gray-900 shadow-inner">
+                    <TaskIcon icon={modalData.icon} className="w-4 h-4" />
+                  </div>
+                )}
+                <input
+                  ref={inputRef}
+                  id="task-modal-title"
+                  type="text"
+                  value={modalData.name}
+                  onChange={(e) => setModalData({ ...modalData, name: e.target.value })}
+                  className="w-full bg-transparent outline-none text-[1.6rem] leading-tight font-bold text-gray-900 placeholder:text-gray-600/40"
+                  style={{ fontFamily: 'var(--font-handwritten)' }}
+                  placeholder="What needs doing?"
+                  autoFocus
+                />
+              </div>
             </div>
             <button
               type="button"
@@ -115,6 +123,61 @@ export function TaskModal({
 
         <div className="flex-1 overflow-y-auto">
           <div className="px-5 sm:px-7 py-5 space-y-5">
+
+            {/* Activity Icon Preset */}
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
+                <p className={`text-[9px] font-black tracking-[0.18em] uppercase ${
+                  isDark ? 'text-zinc-500' : 'text-zinc-400'
+                }`}>Icon</p>
+                {modalData.icon && (
+                  <button
+                    type="button"
+                    onClick={() => setModalData((prev) => ({ ...prev, icon: null }))}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 ${
+                      isDark
+                        ? 'text-zinc-400 hover:text-white hover:bg-white/10'
+                        : 'text-zinc-500 hover:text-zinc-900 hover:bg-black/5'
+                    }`}
+                  >
+                    <X className="w-3 h-3" />
+                    None
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+                {TASK_ICONS.map((item) => {
+                  const isSelected = modalData.icon === item.id
+                  const IconComp = item.icon
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setModalData((prev) => ({
+                          ...prev,
+                          icon: isSelected ? null : item.id,
+                        }))
+                      }}
+                      title={item.label}
+                      aria-label={`Select ${item.label} icon`}
+                      aria-pressed={isSelected}
+                      className={`h-9 sm:h-10 rounded-xl flex items-center justify-center transition-all group relative active:scale-95 ${
+                        isSelected
+                          ? isDark
+                            ? 'bg-[#BDCC8D] text-zinc-950 shadow-md ring-2 ring-[#BDCC8D] ring-offset-2 ring-offset-zinc-900'
+                            : 'bg-[#2D5F3E] text-white shadow-md ring-2 ring-[#2D5F3E] ring-offset-2 ring-offset-white'
+                          : isDark
+                            ? 'bg-zinc-800/80 text-zinc-400 border border-zinc-700/80 hover:text-white hover:bg-zinc-700/60'
+                            : 'bg-white/70 text-zinc-600 border border-zinc-200/90 hover:text-zinc-950 hover:bg-white shadow-sm'
+                      }`}
+                    >
+                      <IconComp className="w-4 h-4" />
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
             {/* Days */}
             <div>

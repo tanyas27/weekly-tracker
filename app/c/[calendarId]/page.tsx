@@ -140,6 +140,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     duration: 1,
     color: COLORS[0],
     reminderOffset: undefined,
+    icon: null,
   })
 
   useEffect(() => {
@@ -249,6 +250,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       duration: task.duration,
       color: task.color,
       reminderOffset: task.reminderOffset,
+      icon: task.icon || null,
     })
     setShowModal(true)
   }
@@ -265,6 +267,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
       duration: 1,
       color: COLORS[colorIndex],
       reminderOffset: undefined,
+      icon: null,
     })
     setShowModal(true)
   }
@@ -273,7 +276,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
     if (!showModal) return
     setShowModal(false)
     saveTask(modalData)
-    setModalData({ id: '', name: '', days: [], startTime: '', duration: 1, color: COLORS[0], reminderOffset: undefined })
+    setModalData({ id: '', name: '', days: [], startTime: '', duration: 1, color: COLORS[0], reminderOffset: undefined, icon: null })
   }
 
   const handleDeleteModal = () => {
@@ -540,6 +543,7 @@ export default function CalendarPage({ params }: { params: Promise<{ calendarId:
                   duration: task.duration,
                   color: task.color,
                   reminderOffset: task.reminderOffset,
+                  icon: task.icon,
                 })
               }}
             />

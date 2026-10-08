@@ -12,6 +12,7 @@ import { SLOT_HEIGHT_PX } from '@/lib/constants'
 import { Task } from '@/types/task'
 import { TaskCard } from './TaskCard'
 import { getActiveDragTask, setActiveDragTask } from '@/lib/drag-state'
+import { TaskIcon } from '@/lib/task-icons'
 
 interface ScheduleGridProps {
   days: DayInfo[]
@@ -139,7 +140,10 @@ const DayColumn = React.memo(function DayColumn({
             }}
           >
             <div className="flex items-center justify-between gap-2 overflow-hidden">
-              <span className="text-xs font-bold truncate">
+              <span className="text-xs font-bold truncate flex items-center gap-1.5">
+                {activeDrag?.icon && (
+                  <TaskIcon icon={activeDrag.icon} className="w-3.5 h-3.5 shrink-0" />
+                )}
                 {name ? `Move "${name}"` : 'Move task here'}
               </span>
               <span className="text-[10px] font-semibold opacity-85 shrink-0 px-1.5 py-0.5 rounded bg-white/20">

@@ -32,6 +32,7 @@ export interface TaskRow {
   days: string[];
   color: string;
   reminder_offset?: number | null;
+  icon?: string | null;
   updated_at: string;
   // Todo support fields
   is_scheduled?: boolean;
@@ -55,6 +56,7 @@ export async function ensureTasksSchema() {
   try {
     await sql`
       ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_offset INTEGER;
+      ALTER TABLE tasks ADD COLUMN IF NOT EXISTS icon TEXT;
     `;
     hasInitializedTasksTable = true;
   } catch (error) {
@@ -162,7 +164,7 @@ export async function getTasksForSession(sessionId: string): Promise<TaskRow[]> 
   try {
     await ensureTasksSchema();
     const rows = await sql`
-      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
+      SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, icon, updated_at, is_scheduled, category, sort_order
       FROM tasks
       WHERE session_id = ${sessionId}::uuid
         AND (is_scheduled IS NULL OR is_scheduled = TRUE)
@@ -189,6 +191,7 @@ export async function upsertTask(task: {
   days: string[];
   color: string;
   reminderOffset?: number | null;
+  icon?: string | null;
 }): Promise<TaskRow | null> {
   const sql = getSql();
   if (!sql) return null;
@@ -199,14 +202,15 @@ export async function upsertTask(task: {
     const completedDays = task.completedDays || [];
     const isCompleted = task.completed ?? (completedDays.length === task.days.length && task.days.length > 0);
     const reminderOffset = task.reminderOffset !== undefined ? task.reminderOffset : null;
+    const taskIcon = task.icon || null;
 
     const rows = await sql`
       INSERT INTO tasks (
-        id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled
+        id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, icon, updated_at, is_scheduled
       )
       VALUES (
         ${taskId}, ${task.calendarId}, ${task.sessionId}::uuid, ${cleanName}, ${task.startTime}, ${task.endTime},
-        ${task.startHour}, ${task.duration}, ${isCompleted}, ${completedDays}, ${task.days}, ${task.color}, ${reminderOffset}, NOW(), TRUE
+        ${task.startHour}, ${task.duration}, ${isCompleted}, ${completedDays}, ${task.days}, ${task.color}, ${reminderOffset}, ${taskIcon}, NOW(), TRUE
       )
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
@@ -219,8 +223,9 @@ export async function upsertTask(task: {
         days = EXCLUDED.days,
         color = EXCLUDED.color,
         reminder_offset = EXCLUDED.reminder_offset,
+        icon = EXCLUDED.icon,
         updated_at = NOW()
-      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, updated_at, is_scheduled, category, sort_order
+      RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration, completed, completed_days, days, color, reminder_offset, icon, updated_at, is_scheduled, category, sort_order
     `;
     return (rows[0] as TaskRow) || null;
   } catch (error) {
@@ -271,6 +276,7 @@ export async function copySessionTasks(calendarId: string, sourceSessionId: stri
         days: st.days,
         color: st.color,
         reminderOffset: st.reminder_offset !== undefined && st.reminder_offset !== null ? Number(st.reminder_offset) : undefined,
+        icon: st.icon || null,
       });
       if (inserted) {
         createdTasks.push(inserted);
@@ -454,7 +460,7 @@ export async function getUnscheduledTasks(calendarId: string): Promise<TaskRow[]
   try {
     const rows = await sql`
       SELECT id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-             completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+             completed, completed_days, days, color, reminder_offset, icon, updated_at, is_scheduled, category, sort_order
       FROM tasks
       WHERE calendar_id = ${calendarId}
         AND is_scheduled = FALSE
@@ -630,7 +636,7 @@ export async function promoteTodoToScheduled(task: {
         updated_at = NOW()
       WHERE id = ${task.id} AND calendar_id = ${task.calendarId}
       RETURNING id, calendar_id, session_id, name, start_time, end_time, start_hour, duration,
-                completed, completed_days, days, color, updated_at, is_scheduled, category, sort_order
+                completed, completed_days, days, color, reminder_offset, icon, updated_at, is_scheduled, category, sort_order
     `;
     return (rows[0] as TaskRow) || null;
   } catch (error) {

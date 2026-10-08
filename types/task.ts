@@ -10,6 +10,7 @@ export interface Task {
   days: string[]
   color: string
   reminderOffset?: number | null
+  icon?: string | null        // Preselected vector icon identifier (e.g., "laptop", "dumbbell")
   // Todo list support fields
   isScheduled?: boolean       // false = unscheduled todo, true/undefined = scheduled calendar task
   category?: string | null    // Category/tag for organization (e.g., "Work", "Personal")
@@ -26,5 +27,5 @@ export interface StoredTask extends Omit<Task, 'completedDays' | 'days'> {
 // Fields captured by the add/edit modal; derived fields (endTime, startHour, completed*) are computed on save.
 export type TaskModalFormData = Pick<
   Task,
-  'id' | 'name' | 'days' | 'startTime' | 'duration' | 'color' | 'reminderOffset'
+  'id' | 'name' | 'days' | 'startTime' | 'duration' | 'color' | 'reminderOffset' | 'icon'
 >

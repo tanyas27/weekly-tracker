@@ -4,6 +4,7 @@ export interface ActiveDragTaskState {
   duration: number
   fromDay: string
   startHour: number
+  icon?: string | null
 }
 
 let currentDragTask: ActiveDragTaskState | null = null

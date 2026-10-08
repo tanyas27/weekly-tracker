@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-10-08 - Preselected Task Vector Icons (Lucide-React)
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Added curated set of 20 clean vector icons from `lucide-react` (Work, Workout, Reading, Break, Meal, Wellness, Focus, Music, Meeting, Code, Study, Shopping, Morning, Night, Leisure, Chores, Cycling, Gaming, Travel, Call) to tasks. Added `icon?: string | null` to `Task`, `StoredTask`, `TaskModalFormData`, and PostgreSQL `tasks` table (`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS icon TEXT`). Added interactive Icon Preset picker with live preview badge and clear button to `TaskModal.tsx`. Rendered icons beside task titles in `TaskCard.tsx`, `TodoItem.tsx`, and `ScheduleGrid.tsx` ghost drag preview. Added Vitest unit tests in `lib/__tests__/task-icons.test.ts`.
+
 ### 2026-10-08 - Drag-and-Drop Active Hours Rescheduling & Ghost Preview Fix
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
 - **Verifier:** daman
