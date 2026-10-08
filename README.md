@@ -8,12 +8,19 @@ Built with Next.js, React, TypeScript, and Tailwind CSS. Works fully offline as 
 
 ![Weekly Tracker - Desktop](public/screenshot-desktop.png)
 
+<p align="center">
+  <img src="public/screenshot-modal.png" width="48%" alt="Weekly Tracker - Task Modal with Activity Icons & Emojis" />
+  <img src="public/screenshot-mobile.png" width="48%" alt="Weekly Tracker - Mobile View" />
+</p>
+
 ---
 
 ## ✨ Features
 
 - **Visual weekly schedule** — a 7-day, hourly time grid (7 AM – 12 AM) with click-to-add tasks, automatic overlap layout, and a live "current time" indicator line.
+- **Activity icons & custom emojis** — tag tasks with 20 curated Lucide vector icons (work, workout, study, reading, coffee break, meals, focus, music, travel, gaming, etc.) or type/paste any custom Unicode emoji (🎯, 🚀, 💡, 🍵, 🏃). Icons render inline on schedule cards, drag previews, and sidebar notes.
 - **Sticky-note task cards** — 12 pastel colors, multi-day assignment, quarter-hour duration stepper, and per-day completion tracking.
+- **Smooth drag & drop** — drag tasks across days and hours with high-fidelity translucent ghost previews that reflect the task's title, time, duration, and icon in real time.
 - **Reminders & notifications** — configurable lead time (0/5/10/15/30 min), in-app toasts, a notification drawer, optional native browser notifications, and sound alerts.
 - **Progress ring** — an at-a-glance circular indicator of how much of your week is complete.
 - **Dark / light themes** — a hand-tuned glassmorphism look in both modes.
@@ -105,7 +112,7 @@ app/
   c/[calendarId]/    # Shareable calendar page route
 components/          # TaskCard, ScheduleGrid, TaskModal, NotificationDrawer, etc.
 hooks/                # useTasks, useNotifications, useLocalStorage, useCurrentTime
-lib/                  # Reminder engine, task overlap logic, time utils, db layer
+lib/                  # Task icons & presets, reminder engine, time utils, db layer
 types/                # Shared TypeScript types (Task, Notification, etc.)
 public/               # Icons, manifest.json, service worker, screenshots
 ```
