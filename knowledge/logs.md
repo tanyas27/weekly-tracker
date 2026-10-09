@@ -31,6 +31,12 @@ This document records all lifecycle changes, verifications, and updates across t
 
 ## 📅 Log History
 
+### 2026-10-09 - Modal Viewport Redesign, Zero Cropping, Desktop Color Fill & 1-Click Emoji Picker
+- **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
+- **Verifier:** daman
+- **Status:** Verified (`active`)
+- **Action:** Fixed issue where modals got hidden or cropped across mobile and desktop viewports. Upgraded modal container to dynamic viewport units (`max-h-[88dvh] sm:max-h-[min(88dvh,740px)]`) with safe-area bottom insets (`env(safe-area-inset-bottom)`). Added `pb-28` scroll clearance to `TaskModal.tsx` to eliminate sticky footer overlap on bottom form elements (colors and reminders). Preserved the authentic Ghibli header design with dynamic pastel backgrounds, circular accents, and handwritten font. Replaced 4-row 20-icon grid with a compact 1-row scrollable horizontal tray (~44px) saving 135px+ of vertical space. Added 1-click curated emoji selector button (`[ 😊 More Emojis... ]`) at the end of the icon tray, eliminating text box inputs. Updated Color palette to fill desktop width evenly (`flex items-center justify-between`) with selected checkmark indicators. Propagated `max-h-[88dvh]` and `overflow-y-auto` across all app modals (`ActiveHoursModal.tsx`, `PrivacySettingsModal.tsx`, `ShortcutsHelpModal.tsx`, `CategoryManager.tsx`). Built interactive style playground at `app/modal-preview/page.tsx`. Verified with automated browser subagent tests.
+
 ### 2026-10-08 - Full Unicode Emoji & Icon Persistence, README & Public Showcase Assets
 - **Actor:** Antigravity AI Agent (Model: Gemini 3.8 Flash High)
 - **Verifier:** daman

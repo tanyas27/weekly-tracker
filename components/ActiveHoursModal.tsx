@@ -102,7 +102,7 @@ export function ActiveHoursModal({
       />
 
       <div
-        className={`relative w-full max-w-lg rounded-3xl p-6 sm:p-7 shadow-2xl border backdrop-blur-2xl transition-all ${
+        className={`relative w-full max-w-lg max-h-[88dvh] overflow-y-auto rounded-3xl p-6 sm:p-7 shadow-2xl border backdrop-blur-2xl transition-all ${
           isDark
             ? 'bg-zinc-900/95 border-white/15 text-zinc-100 shadow-black/70'
             : 'bg-white/95 border-[#2D5F3E]/20 text-[#1a2e23] shadow-[0_16px_50px_rgba(45,95,62,0.15)]'

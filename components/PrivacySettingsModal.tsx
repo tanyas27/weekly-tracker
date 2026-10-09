@@ -47,7 +47,7 @@ export function PrivacySettingsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
       <div
-        className={`w-full max-w-md p-6 sm:p-7 rounded-[28px] shadow-2xl border transition-all ${
+        className={`w-full max-w-md max-h-[88dvh] overflow-y-auto p-6 sm:p-7 rounded-[28px] shadow-2xl border transition-all ${
           isDark
             ? 'bg-gray-800/95 border-gray-700/80 text-white'
             : 'bg-white/95 border-white/80 text-gray-900'

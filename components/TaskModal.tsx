@@ -5,6 +5,14 @@ import { TaskModalFormData } from '../hooks/useTasks'
 import { TimePicker } from './TimePicker'
 import { TASK_ICONS, TaskIcon } from '../lib/task-icons'
 
+const CURATED_EMOJIS = [
+  '🌿', '🌱', '🌸', '🌻', '🌲', '🍄', '🍂', '☀️', '🌧️', '⭐',
+  '☕', '🍵', '🍎', '🥑', '🥐', '🧁', '🥗', '🍕', '💧', '🧘',
+  '📚', '✏️', '💻', '💡', '🎯', '🚀', '📝', '💼', '🔬', '🎨',
+  '🏃', '🚲', '🏊', '🏋️', '🎧', '🎮', '🎬', '✈️', '🐶', '🐱',
+  '✨', '🔥', '💖', '💤', '🎉', '🧸', '🧼', '🧹', '🪴', '🕊️',
+]
+
 interface TaskModalProps {
   showModal: boolean
   modalData: TaskModalFormData
@@ -29,6 +37,7 @@ export function TaskModal({
   const modalRef = React.useRef<HTMLDivElement>(null)
   const previousFocusRef = React.useRef<HTMLElement | null>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  const [showEmojiPicker, setShowEmojiPicker] = React.useState(false)
 
   React.useEffect(() => {
     if (showModal) {
@@ -67,7 +76,7 @@ export function TaskModal({
         aria-modal="true"
         aria-labelledby="task-modal-title"
         tabIndex={-1}
-        className={`w-full sm:max-w-lg max-h-[92vh] sm:max-h-[min(90vh,780px)] flex flex-col rounded-t-[2rem] sm:rounded-[1.75rem] shadow-2xl border overflow-hidden backdrop-blur-3xl transition-all ${
+        className={`w-full sm:max-w-lg max-h-[88dvh] sm:max-h-[min(88dvh,740px)] flex flex-col rounded-t-[2rem] sm:rounded-[1.75rem] shadow-2xl border overflow-hidden backdrop-blur-3xl transition-all ${
           isDark
             ? 'bg-zinc-900/80 border-white/10 shadow-black/70'
             : 'bg-white/70 border-white/80 shadow-[0_24px_80px_rgba(0,0,0,0.20)]'
@@ -112,7 +121,7 @@ export function TaskModal({
               type="button"
               onClick={onClose}
               aria-label="Close"
-              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors mt-0.5"
+              className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-black/10 hover:bg-black/20 transition-colors mt-0.5 cursor-pointer"
             >
               <svg className="w-3.5 h-3.5 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -122,19 +131,22 @@ export function TaskModal({
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          <div className="px-5 sm:px-7 py-5 space-y-5">
+          <div className="px-5 sm:px-7 py-5 space-y-5 pb-28">
 
-            {/* Activity Icon Preset */}
+            {/* Activity Icon & End Emoji Picker */}
             <div>
-              <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center justify-between mb-2">
                 <p className={`text-[9px] font-black tracking-[0.18em] uppercase ${
                   isDark ? 'text-zinc-500' : 'text-zinc-400'
                 }`}>Icon</p>
                 {modalData.icon && (
                   <button
                     type="button"
-                    onClick={() => setModalData((prev) => ({ ...prev, icon: null }))}
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 ${
+                    onClick={() => {
+                      setModalData((prev) => ({ ...prev, icon: null }))
+                      setShowEmojiPicker(false)
+                    }}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full transition-colors flex items-center gap-1 cursor-pointer ${
                       isDark
                         ? 'text-zinc-400 hover:text-white hover:bg-white/10'
                         : 'text-zinc-500 hover:text-zinc-900 hover:bg-black/5'
@@ -145,7 +157,9 @@ export function TaskModal({
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2">
+
+              {/* Single-row horizontal scroll tray with Lucide icons first, and Emoji picker at the END */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1.5 pt-0.5 no-scrollbar scroll-smooth">
                 {TASK_ICONS.map((item) => {
                   const isSelected = modalData.icon?.toLowerCase() === item.id.toLowerCase()
                   const IconComp = item.icon
@@ -158,52 +172,103 @@ export function TaskModal({
                           ...prev,
                           icon: isSelected ? null : item.id,
                         }))
+                        setShowEmojiPicker(false)
                       }}
                       title={item.label}
                       aria-label={`Select ${item.label} icon`}
                       aria-pressed={isSelected}
-                      className={`h-9 sm:h-10 rounded-xl flex items-center justify-center transition-all group relative active:scale-95 ${
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 text-xs font-semibold transition-all cursor-pointer ${
                         isSelected
                           ? isDark
-                            ? 'bg-[#BDCC8D] text-zinc-950 shadow-md ring-2 ring-[#BDCC8D] ring-offset-2 ring-offset-zinc-900'
-                            : 'bg-[#2D5F3E] text-white shadow-md ring-2 ring-[#2D5F3E] ring-offset-2 ring-offset-white'
+                            ? 'bg-[#BDCC8D] text-zinc-950 font-bold shadow-md ring-2 ring-[#BDCC8D]'
+                            : 'bg-[#2D5F3E] text-white font-bold shadow-md ring-2 ring-[#2D5F3E]'
                           : isDark
-                            ? 'bg-zinc-800/80 text-zinc-400 border border-zinc-700/80 hover:text-white hover:bg-zinc-700/60'
-                            : 'bg-white/70 text-zinc-600 border border-zinc-200/90 hover:text-zinc-950 hover:bg-white shadow-sm'
+                          ? 'bg-zinc-800/80 text-zinc-300 border border-zinc-700/80 hover:bg-zinc-700'
+                          : 'bg-white/80 text-zinc-700 border border-zinc-200/80 hover:bg-white shadow-xs'
                       }`}
                     >
-                      <IconComp className="w-4 h-4" />
+                      <IconComp className="w-3.5 h-3.5" />
+                      <span>{item.label}</span>
                     </button>
                   )
                 })}
+
+                {/* EMOJI PICKER BUTTON AT THE END */}
+                {(() => {
+                  const isCustomEmoji = modalData.icon && !TASK_ICONS.some((t) => t.id === modalData.icon?.toLowerCase())
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl shrink-0 text-xs font-semibold border transition-all cursor-pointer ${
+                        isCustomEmoji || showEmojiPicker
+                          ? isDark
+                            ? 'bg-[#BDCC8D] text-zinc-950 font-bold border-[#BDCC8D] shadow-md ring-2 ring-[#BDCC8D]/50'
+                            : 'bg-[#2D5F3E] text-white font-bold border-[#2D5F3E] shadow-md ring-2 ring-[#2D5F3E]/40'
+                          : isDark
+                          ? 'bg-zinc-800/90 text-zinc-200 border-zinc-700 hover:bg-zinc-700'
+                          : 'bg-white/90 text-zinc-800 border-zinc-200/90 hover:bg-white shadow-xs'
+                      }`}
+                    >
+                      <span className="text-sm leading-none">{isCustomEmoji ? modalData.icon : '😊'}</span>
+                      <span>{isCustomEmoji ? 'Selected Emoji' : 'More Emojis...'}</span>
+                    </button>
+                  )
+                })()}
               </div>
-              <div className="flex items-center justify-between gap-2 mt-2 pt-1 border-t border-dashed border-gray-500/20">
-                <span className={`text-[11px] font-medium ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
-                  Or custom emoji:
-                </span>
-                <input
-                  type="text"
-                  maxLength={4}
-                  value={
-                    modalData.icon && !TASK_ICONS.some((t) => t.id === modalData.icon?.toLowerCase())
-                      ? modalData.icon
-                      : ''
-                  }
-                  onChange={(e) => {
-                    const val = e.target.value.trim()
-                    setModalData((prev) => ({
-                      ...prev,
-                      icon: val || null,
-                    }))
-                  }}
-                  placeholder="e.g. 🎯"
-                  className={`w-16 px-2.5 py-1 text-center rounded-lg border text-sm transition-all outline-none ${
+
+              {/* Expandable 1-Click Emoji Grid (Zero typing required) */}
+              {showEmojiPicker && (
+                <div
+                  className={`mt-2.5 p-3 rounded-2xl border backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150 ${
                     isDark
-                      ? 'bg-zinc-800/80 border-zinc-700 text-white placeholder:text-zinc-600 focus:border-[#BDCC8D]'
-                      : 'bg-white/80 border-zinc-200 text-zinc-800 placeholder:text-zinc-400 focus:border-[#2D5F3E]'
+                      ? 'bg-zinc-800/95 border-white/10 shadow-xl'
+                      : 'bg-white/95 border-emerald-900/10 shadow-[0_10px_30px_rgba(45,95,62,0.12)]'
                   }`}
-                />
-              </div>
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                      Tap Any Emoji to Select
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowEmojiPicker(false)}
+                      className="p-1 rounded-lg text-xs opacity-60 hover:opacity-100 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-10 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                    {CURATED_EMOJIS.map((emoji) => {
+                      const isEmojiSelected = modalData.icon === emoji
+                      return (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            setModalData((prev) => ({
+                              ...prev,
+                              icon: isEmojiSelected ? null : emoji,
+                            }))
+                          }}
+                          className={`w-8 h-8 rounded-xl flex items-center justify-center text-lg transition-transform active:scale-90 cursor-pointer ${
+                            isEmojiSelected
+                              ? isDark
+                                ? 'bg-[#BDCC8D] ring-2 ring-[#BDCC8D] scale-110 shadow-sm'
+                                : 'bg-emerald-100 ring-2 ring-[#2D5F3E] scale-110 shadow-sm'
+                              : isDark
+                              ? 'hover:bg-white/10'
+                              : 'hover:bg-black/5'
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Days */}
@@ -314,14 +379,14 @@ export function TaskModal({
               <p className={`text-[9px] font-black tracking-[0.18em] uppercase mb-3 ${
                 isDark ? 'text-zinc-500' : 'text-zinc-400'
               }`}>Color</p>
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex items-center justify-between gap-1 sm:gap-2">
                 {COLORS.map((color, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setModalData({ ...modalData, color })}
                     aria-label={`Select color ${idx + 1}`}
-                    className={`w-8 h-8 rounded-full relative transition-all ${color} ${
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full relative transition-all cursor-pointer shrink-0 ${color} ${
                       modalData.color === color
                         ? 'ring-[3px] ring-offset-2 ring-zinc-400/70 scale-110 shadow-lg'
                         : 'opacity-70 hover:opacity-100 hover:scale-110'
@@ -337,7 +402,8 @@ export function TaskModal({
               </div>
             </div>
 
-            {/* Reminder */}            <div>
+            {/* Reminder */}
+            <div>
               <p className={`flex items-center gap-1.5 text-[9px] font-black tracking-[0.18em] uppercase mb-2.5 ${
                 isDark ? 'text-zinc-500' : 'text-zinc-400'
               }`}>
@@ -374,9 +440,12 @@ export function TaskModal({
         </div>
 
         {/* Footer */}
-        <div className={`flex-shrink-0 flex items-center gap-2.5 px-5 sm:px-6 py-4 border-t ${
-          isDark ? 'border-white/[0.07] bg-zinc-900/20' : 'border-white/60 bg-white/20'
-        }`}>
+        <div
+          className={`flex-shrink-0 flex items-center gap-2.5 px-5 sm:px-6 py-4 border-t backdrop-blur-xl ${
+            isDark ? 'border-white/[0.07] bg-zinc-900/90' : 'border-black/[0.06] bg-white/90 shadow-lg'
+          }`}
+          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+        >
           {modalData.id && (
             <button
               type="button"

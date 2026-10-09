@@ -63,7 +63,7 @@ export function CategoryManager({
     >
       <div
         className={`
-          w-full max-w-md mx-4 p-6 rounded-2xl shadow-2xl
+          w-full max-w-md mx-4 max-h-[88dvh] overflow-y-auto p-6 rounded-2xl shadow-2xl
           ${
             isDark
               ? 'bg-zinc-900/90 border border-white/20'

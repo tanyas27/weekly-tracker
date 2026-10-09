@@ -19,8 +19,8 @@ sources:
   - public/totoro.jpeg
 generated:
   agent: Antigravity AI
-  model: Gemini 3.6 Flash
-  timestamp: 2026-08-10T20:28:32+05:30
+  model: Gemini 3.8 Flash High
+  timestamp: 2026-10-09T18:30:00+05:30
 verified:
   by: daman
   date: 2026-08-10
@@ -143,11 +143,13 @@ Located in the header panel. Renders an SVG progress ring driven by `progressPer
 If the current time falls within `07:00 AM` to `12:00 AM`, an animated glowing red indicator line (`currentTimeTop`) with a pulsing endpoint dot spans across the current day column.
 
 ### 4.3 Task Modal (Add/Edit)
-Glassmorphism modal dialog backdrop (`bg-black/30 backdrop-blur-sm`) featuring:
-- Input for task name with autofocus.
-- Day selection pills (`MON`..`SUN`) allowing multi-day selection.
-- Time input (`startTime`) and numeric stepper for duration in quarter-hour increments (`step="0.25"`).
-- Color selector pills representing `COLORS`.
+Glassmorphism modal dialog backdrop (`bg-black/50 backdrop-blur-md`) featuring:
+- **Responsive Dynamic Viewport**: Bounded to `max-h-[88dvh] sm:max-h-[min(88dvh,740px)]` preventing mobile browser toolbar cutoff.
+- **Original Ghibli Header**: Dynamic pastel task color backdrop with soft circular accent blobs, uppercase `NEW TASK` / `EDIT TASK` tracking, and cursive handwritten title input (`font-handwritten`).
+- **Compact Horizontal Activity Icon Tray**: Single-row horizontal scrollable tray (~44px height) listing preset vector icons first, with an interactive `[ 😊 More Emojis... ]` 1-click curated emoji picker button positioned at the far right end (eliminating manual text entry).
+- **Desktop-Filling Color Palette**: 12 pastel color swatches evenly distributed across the desktop card width (`flex items-center justify-between`) featuring active ring highlights and checkmark indicators.
+- **Zero Bottom Cropping**: Generous bottom scroll clearance (`pb-28`) ensuring all fields (reminder dropdown, colors) scroll completely above the sticky action footer.
+- **Sticky Safe-Area Action Bar**: Translucent blurred action bar with Delete, Cancel, and Save buttons respecting `env(safe-area-inset-bottom)`.
 - Delete button (when editing existing tasks).
 
 ### 4.5 Notification Center & Toast Glassmorphism Architecture

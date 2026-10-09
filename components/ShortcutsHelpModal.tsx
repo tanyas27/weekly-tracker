@@ -40,7 +40,7 @@ export function ShortcutsHelpModal({ isOpen, isDark, onClose }: ShortcutsHelpMod
         aria-labelledby="shortcuts-dialog-title"
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className={`w-full max-w-md p-6 rounded-3xl shadow-2xl border transition-colors outline-none ${
+        className={`w-full max-w-md max-h-[88dvh] overflow-y-auto p-6 rounded-3xl shadow-2xl border transition-colors outline-none ${
           isDark
             ? 'bg-zinc-900 border-white/10 text-zinc-100 shadow-black/60'
             : 'bg-white border-black/10 text-[#1a2e23] shadow-xl'
